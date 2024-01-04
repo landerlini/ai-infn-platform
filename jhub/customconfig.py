@@ -274,9 +274,10 @@ class InfnSpawner(KubeSpawner):
         if accelerator != "none":
           if hasattr(node.status, status_key):
             for return_item in return_list:
-              ext_res = return_item.get("extended_resource", default_extended_resource)
-              node_count = getattr(node.status, status_key).get(ext_res, 0)
-              return_item['count'] += node_count
+              if accelerator == return_item['name']:
+                ext_res = return_item.get("extended_resource", default_extended_resource)
+                node_count = getattr(node.status, status_key).get(ext_res, 0)
+                return_item['count'] += int(node_count)
           
       return return_list
       

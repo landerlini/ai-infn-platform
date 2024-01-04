@@ -41,6 +41,21 @@ spec:
     spec:
       priorityClassName: nfs-critical
         
+      initContainers:
+        - name: init-dir
+          image: alpine:latest
+          securityContext:
+            privileged: true
+          command: ["/bin/ash", "-c"]
+          args: 
+            - |
+              mkdir -p /data/nfs
+              chmod 777 /data/nfs
+
+          volumeMounts:
+            - name: storage
+              mountPath: /data
+
       containers:
       - name: nfs-server
         image: {{ .Values.nfsServerImage }}
@@ -63,13 +78,19 @@ spec:
             cpu: "1"
         
         volumeMounts:
-        - name: storage
-          mountPath: {{ .Values.nfsServerInternalMountPath }}
+          - name: storage-nfs
+            mountPath: {{ .Values.nfsServerInternalMountPath }}
+
       volumes:
-      - name: storage
-        hostPath:
-          path: {{ .Values.nfsServerHostPath }}
-          type: DirectoryOrCreate 
+        - name: storage-nfs
+          hostPath:
+            path: {{ .Values.nfsServerHostPath }}/nfs
+            type: DirectoryOrCreate 
+
+        - name: storage
+          hostPath:
+            path: {{ .Values.nfsServerHostPath }}
+            type: DirectoryOrCreate 
 
       tolerations:
         {{ .Values.nfsServerTolerations | toYaml | nindent 8 }}

@@ -45,7 +45,14 @@ spec:
             nodeSelectorTerms:
               - matchExpressions:
                   - key: {{ .Values.gpuAffinityLabel }}
-                    operator: Exists
+                    operator: In
+                    values:
+                      {{- $label := .Values.gpuAffinityLabel -}}
+                      {{ range .Values.acceleratorKnownModels -}}
+                      {{- if eq .type "gpu" }}
+                      - {{ get .node_selector $label }}
+                      {{- end -}}
+                      {{ end -}}
       {{ end }}
 
       # Mark this pod as a critical add-on; when enabled, the critical add-on
@@ -59,8 +66,6 @@ spec:
         env:
           - name: MIG_STRATEGY
             value: {{ .Values.gpuMigStrategy | default "single" }}
-          - name: NVIDIA_MIG_MONITOR_DEVICES
-            value: all
           - name: FAIL_ON_INIT_ERROR
             value: "false"
         securityContext:
