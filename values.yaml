@@ -20,7 +20,7 @@ bastionPort: 22
 bastionNodePort: 30022
 
 # bastionAdminPublicKey is the public RSA key of an administrator 
-bastionAdminPublicKey: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDQOJC4BWjsUIfEU/rocNZO5xvEFe1j7bCkxBCI8YLWZfV2w9dO8ymRtUPuGh2mwDbEoyZUg3qARyVML7WgfzrDtfm9ESiVV1Kv8jJtNKsjQUQsaaSSEWHvwXdGgkuwGzzG1RwjRI5L0tAahETp6iLy/yfbHWM8SbKmKojMyddfDxVWHJrSyRAnKdo1nMiw/TGrRFc/dshVke8iifGEttcedjTmA7bF7rnMhXekWyJkVD35uxY0m7ZOjb6cMDfdt4Am18B9ZaACNYYDbuCHP4JGWZRSOU30ZZzMPquhE1Uft4MH85UEgpaGjxFzvn6IcPP5fU9bjB0xECogi6GHnGQ7 lucio@pclhcb06"
+bastionAdminPublicKey: 
 
 
 ################################################################################

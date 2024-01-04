@@ -11,6 +11,10 @@ be regenerated upon uninstalling and reinstalling the chart.
 ```yaml
 hostname: # Put here the hostname of your setup, e.g. "jhub.123.45.67.89.myip.cloud.infn.it"
 
+bastionAdminPublicKey: # Put here a public RSA key for accessing the bastion as administrator
+                       # You may have one in your `$HOME/.ssh/id_rsa.pub`, 
+                       # otherwise run `ssh-keygen` to generate
+
 jhubIamClientId: # Put here the id of a client on iam.cloud.infn.it
 jhubIamClientSecret: # Put here the secret of your client
 jhubCryptKey: # Generate and copy here a deployment-unique token: `openssl rand -hex 32`
