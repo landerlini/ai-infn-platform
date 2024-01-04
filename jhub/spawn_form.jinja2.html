@@ -1,0 +1,40 @@
+<P> 
+{{ splash_message }}
+</P>
+        
+<hr><br>
+<p>Docker image:
+  <input list="images" name="img" value="{{ images[0].name }}" style="width: 80%; color: #f37524; border-color: #f37524; border-style: solid; border-radius: 4px; padding: 4px; margin-left: 5px; font-weight: bold;">
+  <datalist id="images">
+  {% for image in images %}
+    <option value="{{ image.name }}">{{image.desc}}</option>
+  {% endfor %}
+  </datalist>
+</p>
+<br>
+<p>Number of cores: <br/>
+  {% for cpu in cpus %}
+    <input type="radio" name="cpu" id="cpu{{ cpu }}" value="{{ cpu }}" {{ "checked=checked" if cpu == cpus[0] else ""}}>
+    <label for="cpu{{ cpu }}" style="width: 50px; text-weight: normal;">{{ cpu }} {{ "cores" if cpu == cpus[-1] else " " }}</label>
+  {% endfor %}
+</p>
+
+<p>Memory size: <br/>
+  {% for mem in mem_sizes %}
+    <input type="radio" name="mem" id="mem{{ mem }}g" value="{{ mem }}G" {{ "checked=checked" if mem == mem_sizes[0] else ""}}>
+    <label for="mem{{ mem }}g" style="width: 50px; text-weight: normal;">{{ mem }} {{"GB" if mem == mem_sizes[-1] else " "}}</label>
+  {% endfor %}
+</p>
+<br>
+<p>Hardware accelerator:</br>
+  <input type="radio" name="gpu" id="gpu-none" value="none" checked>
+  <label for="gpu-none" style="width: 50px; text-weight: normal;">None</label><br/>
+  {% for acc in accelerators %}
+    <input type="radio" name="gpu" id="gpu{{ acc.model }}" value="{{ acc.type }}:{{ acc.model }}:1">
+    <label for="gpu{{ acc.model }}" style="width: 80%; text-weight: normal;">
+      {{ acc.desc }} 
+      <font style="padding-left: 10pt; color: #ea0; font-size: smaller; font-weight: normal; font-style: italic;">{{ acc.avail }} available</font>
+    </label><br/>
+  {% endfor %}
+</p>
+

@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: jhub-env
+
+data:
+    oauthCallback: https://{{ required "Missing hostname configuration" .Values.hostname }}/hub/oauth_callback
+    oauthEndpoint: {{ required "Missing IAM server config (jhubIamServer)" .Values.jhubIamServer | quote }} 
+    oauthGroups: {{ required "Missing IAM server config (jhubAllowedIamGroups)" .Values.jhubAllowedIamGroups | join " " }} 
+    oauthAdminGroups: {{ .Values.jhubAdminIamGroups | join " " }}
+    oauthIamClientId: {{ required "Missing IAM server config (jhubIamClientId)" .Values.jhubIamClientId }} 
+    oauthIamClientSecret: {{ required "Missing IAM server config (jhubIamClientSecret)" .Values.jhubIamClientSecret }} 
+    jupyterhubCryptKey: {{ required "Missing jhubCryptKey" .Values.jhubCryptKey }} 
+    nfsServerAddress:  {{ required "Missing nfsServerAddress" .Values.nfsServerAddress }}
+    nfsMountPoint: /nfs-shared
+    jupyterStartTimeout: {{ .Values.jhubStartTimeout | quote }}
+    startupScript: {{ .Values.jhubStartupScript | default "/envs/setup.sh" | quote }}
+
+    {{ if .Values.jhubDebug }}
+    debug: "true"
+    {{ else }}
+    debug: "false"
+    {{ end }}
+
+    homeName: {{ .Values.jhubHomeDirectoryName | default "home" }}
+    sshPort:  {{ .Values.bastionPort | squote | default "22" }}
+    jhubNamespace: {{ .Release.Namespace }}
+    defaultSplashMessage: {{ .Values.jhubSplashMessage | default "Welcome" }}
+    defaultJlabImages: {{ .Values.jhubLabImages | toJson | squote }}
+    gpuModelDescription: {{ .Values.acceleratorKnownModels | toJson | squote }}
+    configmapMountPath: {{ .Values.jhubConfigmapMountPath | default "/usr/local/etc/jupyterhub/jupyterhub_config.d" }}
+
+    {{ if .Values.vkdEnabled }}
+    enableVkd: "true"
+    {{ else }}
+    enableVkd: "false"
+    {{ end }}
+
+    vkdSidecarImage: {{ .Values.vkdSidecarImage }}
+    vkdSidecarName: {{ .Values.vkdSidecarName | default "vkd" }}
+    vkdAdminServiceAccount: {{ .Values.vkdAdminServiceAccount | default "vkd-batch-admin" }}
+    vkdAdminUserGroup: {{ .Values.vkdAdminUserGroup | default "vkd" }}
+    vkdPort: {{ .Values.vkdPort | default 8000 | toString | toJson }}
+    vkdMinioUrl: {{ .Values.vkdMinioUrl | default "minio-singleuser:9000" }}
+    vkdImageBranch: {{ .Values.vkdImageBranch | default "main" }}
+    vkdNamespace: {{ .Values.vkdNamespace | default "vkd" }}
+

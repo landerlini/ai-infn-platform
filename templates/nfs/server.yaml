@@ -1,0 +1,110 @@
+{{- if .Values.nfsServerAddress -}}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: storage
+  labels:
+    name: storage
+{{- end }}
+
+---
+
+{{- if .Values.nfsServerAddress -}}
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: nfs-critical
+value: 10
+globalDefault: false
+description: |
+  Priority class for the NFS servers to reduce the probability of eviction on 
+  disk pressure.
+
+{{- end }}
+
+---
+
+{{- if .Values.nfsServerAddress -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nfs-server
+  namespace: storage
+spec:
+  selector:
+    matchLabels:
+      app: nfs-server
+  template:
+    metadata:
+      labels:
+        app: nfs-server
+    spec:
+      priorityClassName: nfs-critical
+        
+      containers:
+      - name: nfs-server
+        image: {{ .Values.nfsServerImage }}
+        ports:
+        - name: nfs
+          containerPort: 2049
+        - name: mountd
+          containerPort: 20048
+        - name: rpcbind
+          containerPort: 111
+        securityContext:
+          privileged: true
+
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "125m"
+          limits:
+            memory: "1Gi"
+            cpu: "1"
+        
+        volumeMounts:
+        - name: storage
+          mountPath: {{ .Values.nfsServerInternalMountPath }}
+      volumes:
+      - name: storage
+        hostPath:
+          path: {{ .Values.nfsServerHostPath }}
+          type: DirectoryOrCreate 
+
+      tolerations:
+        {{ .Values.nfsServerTolerations | toYaml | nindent 8 }}
+
+      nodeSelector:
+        {{ .Values.nfsServerNodeSelector | toYaml | nindent 8 }}
+
+{{- end }}
+        
+---
+
+{{- if .Values.nfsServerAddress -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: nfs
+  namespace: storage
+  labels:
+    app: nfs
+    tier: service
+spec:
+  type: ClusterIP
+  clusterIP: {{ .Values.nfsServerAddress }}
+  ports:
+  - name: nfs
+    port: 2049 
+    #nodePort: 32049
+  - name: mountd
+    port: 20048 # mountd
+    #nodePort: 32048
+  - name: rpcbind
+    port: 111 # rpcbind
+    #nodePort: 30111
+  selector:
+    app: nfs-server # must match with the label of NFS pod
+
+{{- end }}
+

@@ -1,0 +1,81 @@
+# Image name: harbor.cloud.infn.it/testbed-dm/ai-infn:0.1
+FROM jupyter/minimal-notebook:latest
+
+USER root
+
+## Libraries
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -qy \
+      vim less nano \
+      linux-headers-generic gcc g++ make \
+      libffi-dev \
+      git \
+      bash \
+      tini \
+      python3.10 \
+      unzip \
+      htop \
+      subversion \
+      graphviz \
+      libgl1 \
+      build-essential \
+      libargon2-0-dev \
+      libffi-dev \
+      libpixman-1-dev \
+      libcairo2-dev \
+      libjpeg-dev \
+      libczmq-dev \
+      pandoc \
+      texlive-xetex \
+      texlive-fonts-recommended \
+      texlive-base \
+      snakemake \
+      screen \
+      openssh-client \
+      fuse \
+      ssh && \
+    DEBIAN_FRONTEND=noninteractive apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+
+RUN pip install --no-cache-dir \
+  numpy pandas matplotlib h5py \
+  dask-labextension 
+
+RUN mkdir /usr/bin/pip && mkdir /usr/bin/pip3 && mkdir /usr/bin/pip3.8
+
+
+
+# Install vscode
+RUN curl -fsSL https://code-server.dev/install.sh | sh
+RUN python3 -m pip install jupyter-server-proxy \
+    git+https://github.com/landerlini/jupyter_codeserver_proxy.git \
+    jupyter-resource-usage \
+    jupyterlab-spreadsheet-editor 
+
+# Install sts-wire
+RUN mkdir -p /usr/local/share/dodasts/bin/ && \
+    curl -L https://github.com/DODAS-TS/sts-wire/releases/download/v2.1.2/sts-wire_linux -o /usr/local/share/dodasts/bin/sts-wire && \
+    chmod +x /usr/local/share/dodasts/bin/sts-wire && \
+    ln -s /usr/local/share/dodasts/bin/sts-wire /usr/local/bin/sts-wire
+
+RUN pip install git+https://github.com/landerlini/vkd-client.git --force-reinstall 
+
+
+# Changes the home directory of the user to private
+RUN sed -i 's/:\/root:/:\/home\/private:/g' /etc/passwd
+
+# Configure the sshd service
+RUN echo "PermitRootLogin yes"                        >> /etc/ssh/sshd_config.d/aiinfn.conf && \
+    echo "StrictModes no"                             >> /etc/ssh/sshd_config.d/aiinfn.conf && \
+    echo "AuthorizedKeysFile %h/.ssh/authorized_keys" >> /etc/ssh/sshd_config.d/aiinfn.conf && \
+    echo "PasswordAuthentication no"                  >> /etc/ssh/sshd_config.d/aiinfn.conf && \
+    echo "X11Forwarding no"                           >> /etc/ssh/sshd_config.d/aiinfn.conf && \
+    echo "KbdInteractiveAuthentication no"            >> /etc/ssh/sshd_config.d/aiinfn.conf && \
+    echo "PubkeyAuthentication yes"                   >> /etc/ssh/sshd_config.d/aiinfn.conf 
+
+WORKDIR /home
+
+RUN rm -rf /home/jovyan
+
+

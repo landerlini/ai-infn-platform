@@ -1,0 +1,102 @@
+# Ensure existing bastion namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bastion
+---
+# Create deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bastion
+  namespace: bastion
+  labels:
+    app: bastion
+spec:
+  replicas: 1
+  minReadySeconds: 5
+  selector:
+    matchLabels:
+      app: bastion
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 2
+  template:
+    metadata:
+      labels:
+        app: bastion
+        tier: service
+    spec:
+      containers:
+      - name: bastion
+        image: {{ .Values.bastionImage }}
+        imagePullPolicy: Always
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "250m"
+        ports:
+        - containerPort: {{ .Values.bastionPort }}
+        env:
+        - name: USERBASE_USERID
+          value: "0"
+        - name: REGEX
+          value: "([\\w/.,-]*/user-([\\w+.,-]*))/\\.ssh/[\\w/.,-]*"
+        - name: JUPYTERHOME
+          value: /jupyterhome
+        - name: SPLASH
+          value: "JHub Bastion. (c) INFN 2023. Visit baltig.infn.it/ml_infn/bastion"
+        - name: ADMINPUBKEY
+          value: {{ .Values.bastionAdminPublicKey }}
+
+        command:
+          - /bastion/start
+          - -o PasswordAuthentication=no 
+          - -o ChallengeResponseAuthentication=no
+          - -o PermitEmptyPasswords=no 
+          - -o PermitRootLogin=yes
+          - -o PubkeyAuthentication=yes 
+          - -o AuthorizedKeysFile=%h/.ssh/authorized_keys
+          - -o X11Forwarding=no 
+          - -o AllowTcpForwarding=yes 
+          - -o AllowAgentForwarding=yes 
+          - -o PermitUserEnvironment=no 
+          - -o ListenAddress=0.0.0.0 
+          - -o StrictModes=no
+          - -o Port={{ .Values.bastionPort }}
+
+        volumeMounts:
+          - name: jupyterhome
+            mountPath: /jupyterhome
+            readOnly: True
+
+      volumes:
+        - name: jupyterhome
+          nfs:
+            server: {{ .Values.nfsServerAddress }}
+            path: "/"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bastion
+  namespace: bastion
+  labels:
+    app: bastion
+    tier: service
+spec:
+  type: NodePort
+  ports:
+  - port: {{ .Values.bastionPort }}
+    nodePort: {{ .Values.bastionNodePort }}
+  selector:
+    app: bastion
+
+
+
+

@@ -1,0 +1,46 @@
+
+{{ range .Values.acceleratorKnownModels }}
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ResourceFlavor
+metadata:
+  {{ if get . "type" -}}
+  name: {{ get . "type" -}}-{{- get . "name" -}}
+  {{ else -}}
+  name: {{ get . "name" -}}
+  {{- end }} 
+spec:
+  nodeLabels:
+    {{- pick . "node_selector" | values | first | toYaml | nindent 4 }}
+---
+{{ end }}
+
+---
+
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ClusterQueue
+metadata:
+  name: "queue-template"
+spec:
+  namespaceSelector: {} # match all.
+  cohort: {{ .Release.Name }}
+  resourceGroups:
+  - coveredResources: ["cpu", "memory", "nvidia.com/gpu"]
+    flavors:
+    {{ range .Values.acceleratorKnownModels }}
+    - {{ if get . "type" -}}
+      name: {{ get . "type" -}}-{{- get . "name" -}}
+      {{ else -}}
+      name: {{ get . "name" -}}
+      {{- end }} 
+      resources:
+      - name: "cpu"
+        nominalQuota: 0
+        borrowingLimit: 0
+      - name: "memory"
+        nominalQuota: 0
+        borrowingLimit: 0
+      - name: "nvidia.com/gpu"
+        nominalQuota: 0
+        borrowingLimit: 0
+
+    {{ end }}

@@ -1,0 +1,120 @@
+# Create the namespace where running the jobs
+# Notice! The roles below refer to the namespace with the
+# capabilities of *launching* (rather than running) the jobs.
+
+{{ if .Values.vkdEnabled }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.vkdNamespace }}
+
+{{ end }}
+
+---
+
+{{ if .Values.vkdEnabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app: vkd
+    component: vkd
+  name: vkd
+  namespace: {{ .Release.Namespace }}
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - pods/log
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups:
+  - "batch"
+  resources:
+  - jobs
+  verbs:
+  - get
+  - watch
+  - list
+  - delete
+  - create
+
+- apiGroups:
+  - "scheduling.k8s.io"
+  resources:
+  - priorityclasses
+  verbs:
+  - get
+  - watch
+  - patch
+  - list
+  - delete
+  - create
+
+- apiGroups:
+  - "kueue.x-k8s.io"
+  resources:
+  - workloads
+  - localqueues
+  - clusterqueues
+  - resourceflavors
+  verbs:
+  - get
+  - patch
+  - watch
+  - list
+  - create
+  - delete
+  - update
+
+{{ end }}
+---
+
+{{ if .Values.vkdEnabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+    name: {{ .Values.vkdAdminServiceAccount | default "vkd-batch-admin" }}
+    namespace: {{ .Release.Namespace }}
+{{ end }}
+
+---
+
+{{ if .Values.vkdEnabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app: vkd
+  name: {{ .Values.vkdAdminServiceAccount | default "vkd-batch-admin" }}
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: vkd
+subjects:
+- kind: ServiceAccount
+  name: {{ .Values.vkdAdminServiceAccount | default "vkd-batch-admin" }}
+  namespace: {{ .Release.Namespace }}
+{{ end }}
+
+---
+
+{{ if .Values.vkdEnabled }}
+{{ range .Values.vkdPriorityClasses }}
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{ get . "name" }}
+value: {{ get . "value" }}
+preemptionPolicy: {{ get . "preemptionPolicy" | default "Never" }}
+globalDefault: false
+description: |
+  {{ get . "description" | default "vkd job description" | nindent 2 }}
+---
+{{ end }}
+{{ end }}
+
