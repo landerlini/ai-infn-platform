@@ -306,7 +306,7 @@ class InfnSpawner(KubeSpawner):
               acc.get('node_selector', {'accelerator': acc.get('name')}), 
               weight=acc.get('preference_weight', 50)
               )
-            for acc in await self.get_accelerators() if acc['count'] > 0 or acc['type'] == ''
+            for acc in GPU_MODEL_DESCRIPTION
             ]
 
         elif accelerator.startswith('gpu:'):
