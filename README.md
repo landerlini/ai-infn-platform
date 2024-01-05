@@ -1,7 +1,10 @@
 # The AI_INFN Platform Helm Chart
 
-## Minimal `values.yaml`:
+## Documentation and installation walkthrough
+Temporarily here: https://codimd.infn.it/s/5X0AHJYhz
 
+
+## Minimal `values.yaml`:
 The Helm Chart will generate tokens and secrets for internal communication, but you 
 need to provide your own tokens and authentications for accessing external services.
 
