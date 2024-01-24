@@ -35,7 +35,7 @@ bastionAdminPublicKey:
 
 # nfsServerAddress is the fixed-IP address of the NFS server (avoid DNS)
 # Important! If modified, the Helm Chart of JupyterHub must be kept in-sync.
-nfsServerAddress: "10.96.0.2"
+nfsServerAddress: "10.43.0.2"
 
 # nfsServerImage is the docker image of the NFS server
 nfsServerImage: k8s.gcr.io/volume-nfs:0.8
@@ -333,7 +333,7 @@ jupyterhub:
 
       - name: shared
         nfs:
-          server: "10.96.0.2"
+          server: "10.43.0.2"
           path: "/"
 
     extraVolumeMounts:
