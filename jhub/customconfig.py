@@ -354,7 +354,7 @@ class InfnSpawner(KubeSpawner):
       return [group.name for group in self.user.groups if not group.properties.get("system", False)] 
 
     def get_user_storage(self):
-      return [group.properties.get("storage") for group in self.user.groups] 
+      return [group.properties.get("storage") for group in self.user.groups is "storage" in group.properties] 
 
     def check_priviledge(self, op):
       system_groups = [g.name for g in self.user.groups if g.properties.get("system", False)] 
