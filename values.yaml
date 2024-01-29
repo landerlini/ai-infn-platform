@@ -228,7 +228,7 @@ wwwPrefix: /docs
 # where the static website is stored.
 # Important: the `wwwPrefix` must be reproduced as a directory-tree structure 
 # in the filesystem.
-wwwPathToStaticWebsite: /www/knowledge-base/output
+wwwPathToStaticWebsite: /www
 
 
 ################################################################################

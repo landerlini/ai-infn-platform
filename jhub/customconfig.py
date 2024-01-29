@@ -274,9 +274,10 @@ class InfnSpawner(KubeSpawner):
         if accelerator != "none":
           if hasattr(node.status, status_key):
             for return_item in return_list:
-              ext_res = return_item.get("extended_resource", default_extended_resource)
-              node_count = getattr(node.status, status_key).get(ext_res, 0)
-              return_item['count'] += node_count
+              if accelerator == return_item['name']:
+                ext_res = return_item.get("extended_resource", default_extended_resource)
+                node_count = getattr(node.status, status_key).get(ext_res, 0)
+                return_item['count'] += int(node_count)
           
       return return_list
       
@@ -305,7 +306,7 @@ class InfnSpawner(KubeSpawner):
               acc.get('node_selector', {'accelerator': acc.get('name')}), 
               weight=acc.get('preference_weight', 50)
               )
-            for acc in await self.get_accelerators() if acc['count'] > 0 or acc['type'] == ''
+            for acc in GPU_MODEL_DESCRIPTION
             ]
 
         elif accelerator.startswith('gpu:'):
