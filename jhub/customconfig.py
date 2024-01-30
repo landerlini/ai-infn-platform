@@ -247,7 +247,7 @@ class InfnSpawner(KubeSpawner):
 
     @staticmethod
     async def get_accelerators(
-      status_key: Literal["allocatable", "capacity"] = "allocatable",
+      status_key: Literal["allocated", "allocatable", "capacity"] = "allocatable",
       default_extended_resource: str = "nvidia.com/gpu"
       ):
       """
@@ -266,19 +266,47 @@ class InfnSpawner(KubeSpawner):
       async with kubernetes_api() as k:
         nodes = await k.list_node()
 
+      pprint (nodes)
+
       # Copy the list
       return_list = [dict(**acc, count=0) for acc in GPU_MODEL_DESCRIPTION]
 
-      for node in nodes.items:
-        accelerator = node.metadata.labels.get("accelerator", "none")
-        if accelerator != "none":
-          if hasattr(node.status, status_key):
+      if status_key in ['allocatable', 'capacity']:
+        for node in nodes.items:
+          accelerator = node.metadata.labels.get("accelerator", "none")
+          if accelerator != "none":
+            if hasattr(node.status, status_key):
+              for return_item in return_list:
+                if accelerator == return_item['name']:
+                  ext_res = return_item.get("extended_resource", default_extended_resource)
+                  node_count = getattr(node.status, status_key).get(ext_res, 0)
+                  return_item['count'] += int(node_count)
+
+      elif status_key in ['allocated']:
+        async with kubernetes_api() as k:
+          pods = await k.list_namespaced_pod(namespace=JHUB_NAMESPACE)
+
+        node_dict = {node.metadata.name: node for node in nodes.items}
+
+        for pod in pods.items:
+          node = node_dict[pod.spec.node_name]
+          accelerator = node.metadata.labels.get("accelerator", "none")
+          if accelerator != "none":
             for return_item in return_list:
               if accelerator == return_item['name']:
                 ext_res = return_item.get("extended_resource", default_extended_resource)
-                node_count = getattr(node.status, status_key).get(ext_res, 0)
-                return_item['count'] += int(node_count)
-          
+                for container in pod.spec.containers:
+                  if container.resources.limits is not None:
+                    container_count = container.resources.limits.get(ext_res, 0)
+                  elif container.resources.requests is not None:
+                    container_count = container.resources.requests.get(ext_res, 0)
+                  else:
+                    container_count = 0
+                  return_item['count'] += int(container_count)
+        
+      else:
+        raise KeyError(f"Unexpected status_key {status_key}")
+            
       return return_list
       
 
@@ -355,7 +383,7 @@ class InfnSpawner(KubeSpawner):
       return [group.name for group in self.user.groups if not group.properties.get("system", False)] 
 
     def get_user_storage(self):
-      return [group.properties.get("storage") for group in self.user.groups is "storage" in group.properties] 
+      return [group.properties.get("storage") for group in self.user.groups if "storage" in group.properties] 
 
     def check_priviledge(self, op):
       system_groups = [g.name for g in self.user.groups if g.properties.get("system", False)] 
@@ -677,6 +705,14 @@ c.KubeSpawner.start_timeout = START_TIMEOUT
 async def aiinfn_option_form (self):
     file_name = os.path.join(CONFIGMAP_MOUNT_PATH / "spawn_form.jinja2.html")
     accelerators = await self.get_accelerators("allocatable", "nvidia.com/gpu")
+    allocated_accelerators = {
+        acc['name']: acc['count'] 
+        for acc in await self.get_accelerators("allocated", "nvidia.com/gpu")
+        }
+
+    for acc in accelerators:
+      acc['avail'] = acc['count'] - allocated_accelerators.get(acc['name'], 0)
+    
     logging.info("Groups")
     logging.info([group.name for group in self.user.groups])
     logging.info([group.__dict__ for group in self.user.groups])
@@ -697,7 +733,8 @@ async def aiinfn_option_form (self):
               type="gpu",
               model=acc['name'],
               desc=acc.get('description', acc),
-              avail=acc['count'],
+              avail=acc['avail'],
+              tot=acc['count'],
           )
           for acc in accelerators if acc['count'] > 0 and acc['name'] not in ['none']
         ],
