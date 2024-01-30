@@ -33,7 +33,14 @@
     <input type="radio" name="gpu" id="gpu{{ acc.model }}" value="{{ acc.type }}:{{ acc.model }}:1">
     <label for="gpu{{ acc.model }}" style="width: 80%; text-weight: normal;">
       {{ acc.desc }} 
+      {% if acc.avail > 1 or acc.avail == acc.tot %}
+      <font style="padding-left: 10pt; color: #0a0; font-size: smaller; font-weight: normal; font-style: italic;">{{ acc.avail }}/{{ acc.tot }} available</font>
+      {% elif acc.avail > 0 %}
       <font style="padding-left: 10pt; color: #ea0; font-size: smaller; font-weight: normal; font-style: italic;">{{ acc.avail }}/{{ acc.tot }} available</font>
+      {% else %}
+      <font style="padding-left: 10pt; color: #a00; font-size: smaller; font-weight: normal; font-style: italic;">{{ acc.avail }}/{{ acc.tot }} available</font>
+      {% endif %}
+
     </label><br/>
   {% endfor %}
 </p>
