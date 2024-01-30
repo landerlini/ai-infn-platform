@@ -33,7 +33,7 @@
     <input type="radio" name="gpu" id="gpu{{ acc.model }}" value="{{ acc.type }}:{{ acc.model }}:1">
     <label for="gpu{{ acc.model }}" style="width: 80%; text-weight: normal;">
       {{ acc.desc }} 
-      <font style="padding-left: 10pt; color: #ea0; font-size: smaller; font-weight: normal; font-style: italic;">{{ acc.avail }} available</font>
+      <font style="padding-left: 10pt; color: #ea0; font-size: smaller; font-weight: normal; font-style: italic;">{{ acc.avail }}/{{ acc.tot }} available</font>
     </label><br/>
   {% endfor %}
 </p>
