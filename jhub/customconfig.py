@@ -647,7 +647,7 @@ c.GenericOAuthenticator.authorize_url = OAUTH_ENDPOINT.strip('/') + '/authorize'
 c.GenericOAuthenticator.token_url = OAUTH_ENDPOINT.strip('/') + '/token'
 c.GenericOAuthenticator.userdata_url = OAUTH_ENDPOINT.strip('/') + '/userinfo'
 c.GenericOAuthenticator.scope = ['openid', 'profile', 'email', 'address', 'offline_access', 'wlcg', 'wlcg.groups']
-c.GenericOAuthenticator.username_claim = "preferred_username"
+c.GenericOAuthenticator.username_claim = lambda d: d["preferred_username"].replace("_", "")
 c.GenericOAuthenticator.allowed_groups = set(OAUTH_GROUPS.split(" "))
 c.GenericOAuthenticator.admin_groups = set(OAUTH_ADMIN_GROUPS.split(" "))
 
