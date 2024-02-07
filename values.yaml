@@ -188,7 +188,7 @@ vkdMinioServerHostPath: /user-data/minio
 # nfsServerNodeSelector is the nodeSelector used to attach the NFS server
 # to a node with dedicated storage resources.
 vkdMinioServerNodeSelector:
-  storage: master
+  storage: nfsexport
 
 # nfsServerTolerations define the tolerations of the NFS server
 vkdMinioServerTolerations:
