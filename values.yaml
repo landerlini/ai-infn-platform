@@ -27,10 +27,10 @@ bastionAdminPublicKey:
 ## NFS server configuration
 ## ------------------------
 ## Important. You *must* define manually on which node to setup the platform 
-## storage, by setting the label storage=master. For example, to use a master 
+## storage, by setting the label storage=nfsexport. For example, to use a master 
 ## volume on the node "vnode-0.localdomain", you can issue:
 ## ```
-## kubectl label nodes vnode-0.localdomain storage=master
+## kubectl label nodes vnode-0.localdomain storage=nfsexport
 ## ```
 
 # nfsServerAddress is the fixed-IP address of the NFS server (avoid DNS)
@@ -49,7 +49,7 @@ nfsServerHostPath: /user-data/nfs
 # nfsServerNodeSelector is the nodeSelector used to attach the NFS server
 # to a node with dedicated storage resources.
 nfsServerNodeSelector:
-  storage: master
+  storage: nfsexport
 
 # nfsServerTolerations define the tolerations of the NFS server
 nfsServerTolerations:
