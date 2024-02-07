@@ -260,8 +260,7 @@ rbac:
 jhubHomeDirectoryName: home
 jhubSplashMessage: Welcome to the AI_INFN Platform!
 jhubLabImages: 
-  AI_INFN Multi-environment setup: harbor.cloud.infn.it/testbed-dm/ai-infn:0.1-pre12
-  AI_INFN Multi-environment setup (stable): harbor.cloud.infn.it/testbed-dm/ai-infn:0.1-pre9
+  AI_INFN Multi-environment setup: harbor.cloud.infn.it/testbed-dm/ai-infn:0.1
 
 
 ################################################################################
