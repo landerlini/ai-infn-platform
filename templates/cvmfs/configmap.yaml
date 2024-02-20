@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cvmfs-csi-default-local
+  labels:
+    app: cvmfs-csi
+data:
+  default.local: |
+    CVMFS_USE_GEOAPI={{ .Values.cvmfsUseGeoAPI | default "yes" }}
+    CVMFS_HTTP_PROXY={{ .Values.cvmfsHttpProxy | default "DIRECT" | quote }}
+
+    CVMFS_QUOTA_LIMIT={{ .Values.cvmfsQuotaLimit | default 1000 }}
+    CVMFS_CACHE_BASE={{ .Values.cvmfsCacheBase | default "/cvmfs-localcache" }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cvmfs-csi-config-d
+  labels:
+    app: cvmfs-csi
+data: {}

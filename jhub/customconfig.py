@@ -460,6 +460,11 @@ class InfnSpawner(KubeSpawner):
         for group in self.get_user_groups():
           volumes += [self.nfs_volume(f'shared-{group}')]
 
+        volumes.append(dict(
+            name='public-cvmfs',
+            persistentVolumeClaim={'claimName': 'cvmfs'}
+          ))
+
       return volumes
 
     @property 
@@ -481,6 +486,12 @@ class InfnSpawner(KubeSpawner):
 
         for group in self.get_user_groups():
           volumes += [{"name": f"shared-{group}", "mountPath": f"/{HOME_NAME}/shared/{group}", "readOnly": False}]
+
+        volumes.append(dict(
+            name='public-cvmfs',
+            mountPath='/cvmfs',
+            mountPropagation='HostToContainer',
+          ))
 
       return volumes
 
