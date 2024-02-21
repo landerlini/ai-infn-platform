@@ -57,29 +57,53 @@ spec:
               mountPath: /data
 
       containers:
-      - name: nfs-server
-        image: {{ .Values.nfsServerImage }}
-        ports:
-        - name: nfs
-          containerPort: 2049
-        - name: mountd
-          containerPort: 20048
-        - name: rpcbind
-          containerPort: 111
-        securityContext:
-          privileged: true
+        - name: nfs-server
+          image: {{ .Values.nfsServerImage }}
+          ports:
+          - name: nfs
+            containerPort: 2049
+          - name: mountd
+            containerPort: 20048
+          - name: rpcbind
+            containerPort: 111
+          securityContext:
+            privileged: true
 
-        resources:
-          requests:
-            memory: "64Mi"
-            cpu: "125m"
-          limits:
-            memory: "1Gi"
-            cpu: "1"
-        
-        volumeMounts:
-          - name: storage-nfs
-            mountPath: {{ .Values.nfsServerInternalMountPath }}
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "125m"
+            limits:
+              memory: "1Gi"
+              cpu: "1"
+          
+          volumeMounts:
+            - name: storage-nfs
+              mountPath: {{ .Values.nfsServerInternalMountPath }}
+              
+        - name: prometheus-client
+          image: "harbor.cloud.infn.it/testbed-dm/python-prometheus-exporter:0.1-pre8"
+          imagePullPolicy: Always
+          ports: 
+            - containerPort: 9400
+
+          volumeMounts:
+            - name: storage
+              mountPath: /exports
+              readOnly: true
+
+          env:
+            - name: DEBUG
+              value: {{ .Values.nfsMetricsDebugMode | quote }}
+            - name: MONITORING_VOLUMES
+              value: {{ .Values.nfsMetricsMonitoringVolumes | toJson | squote }}
+            - name: PORT
+              value: {{ .Values.nfsMetricsPort | default "9400" | quote }}
+            - name: MONITORING_SUBPATHS
+              value: {{ .Values.nfsMetricsMonitoringSubPaths | toJson | squote }}
+            - name: MONITORING_PATHS
+              value: {{ .Values.nfsMetricsMonitoringPaths | toJson | squote }}
+
 
       volumes:
         - name: storage-nfs
@@ -115,6 +139,8 @@ spec:
   type: ClusterIP
   clusterIP: {{ .Values.nfsServerAddress }}
   ports:
+  - name: metrics
+    port: {{ .Values.nfsMetricsPort }}
   - name: nfs
     port: 2049 
     #nodePort: 32049

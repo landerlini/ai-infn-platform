@@ -1,0 +1,9 @@
+# Image name: harbor.cloud.infn.it/testbed-dm/python-prometheus-exporter:0.1-pre3
+FROM python:alpine
+
+RUN python3 -m pip install prometheus-client 
+
+COPY ./occupancy_exporter.py /usr/bin/occupancy_exporter.py
+
+CMD ["python3", "/usr/bin/occupancy_exporter.py"]
+
