@@ -44,7 +44,7 @@ nfsServerImage: k8s.gcr.io/volume-nfs:0.8
 nfsServerInternalMountPath: /exports
 
 # nfsServerHostPath is the hostPath where the nfsServer store shared data
-nfsServerHostPath: /user-data/nfs 
+nfsServerHostPath: /user-data
 
 # nfsServerNodeSelector is the nodeSelector used to attach the NFS server
 # to a node with dedicated storage resources.
@@ -56,6 +56,25 @@ nfsServerTolerations:
   - key: "node-role.kubernetes.io/control-plane"
     operator: "Exists"
     effect: "NoSchedule"
+
+# nfsMetricsPort define the port for the metrics on disk occupancy
+nfsMetricsPort: 9400
+
+# nfsMetricsPort defines a mapping label:mountPath for the monitored volumes
+nfsMetricsMonitoringVolumes:
+  nVME: /exports
+
+# nfsMetricsDebugMode enables stdout logs while generating disk occupanc metrics
+nfsMetricsDebugMode: True
+
+# nfsMetricsMonitoringPaths maps label:mountPath for monitored directories
+nfsMetricsMonitoringPaths:
+  S3: /exports/minio
+  NFS: /exports/nfs
+
+# nfsMetricsMonitoringSubPaths list paths for which monitoring each subdir separately
+nfsMetricsMonitoringSubPaths:
+  - NFS
 
 ################################################################################
 ## Accelerators (GPUs)
