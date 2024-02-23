@@ -1,4 +1,4 @@
-# Image name: harbor.cloud.infn.it/testbed-dm/ai-infn:0.1
+# Image name: harbor.cloud.infn.it/testbed-dm/ai-infn:0.2-pre2
 FROM jupyter/minimal-notebook:latest
 
 USER root
@@ -50,8 +50,7 @@ RUN mkdir /usr/bin/pip && mkdir /usr/bin/pip3 && mkdir /usr/bin/pip3.8
 RUN curl -fsSL https://code-server.dev/install.sh | sh
 RUN python3 -m pip install jupyter-server-proxy \
     git+https://github.com/landerlini/jupyter_codeserver_proxy.git \
-    jupyter-resource-usage \
-    jupyterlab-spreadsheet-editor 
+    jupyter-resource-usage 
 
 # Install sts-wire
 RUN mkdir -p /usr/local/share/dodasts/bin/ && \
@@ -59,8 +58,14 @@ RUN mkdir -p /usr/local/share/dodasts/bin/ && \
     chmod +x /usr/local/share/dodasts/bin/sts-wire && \
     ln -s /usr/local/share/dodasts/bin/sts-wire /usr/local/bin/sts-wire
 
-RUN pip install git+https://github.com/landerlini/vkd-client.git --force-reinstall 
+# RUN pip install git+https://github.com/landerlini/vkd-client.git --force-reinstall 
 
+# Install apptainer
+RUN apt update && \
+    apt install -y software-properties-common && \
+    add-apt-repository -y ppa:apptainer/ppa && \
+    apt update  && \
+    apt install -y apptainer
 
 # Changes the home directory of the user to private
 RUN sed -i 's/:\/root:/:\/home\/private:/g' /etc/passwd
