@@ -1,0 +1,20 @@
+{{ $pvcname := .Values.cvmfsPersistentVolumeClaim }}
+{{- range $namespace := .Values.cvmfsNamespaces }}
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $pvcname }}
+  namespace: {{ $namespace }}
+spec:
+  accessModes:
+  - ReadOnlyMany
+  resources:
+    requests:
+      # Volume size value has no effect and is ignored
+      # by the driver, but must be non-zero.
+      storage: 1
+  storageClassName: cvmfs
+
+--- 
+{{- end }}

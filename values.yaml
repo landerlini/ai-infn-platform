@@ -77,6 +77,34 @@ nfsMetricsMonitoringSubPaths:
   - NFS
 
 ################################################################################
+## Cern Virtual-Machine FileSystem (cvmfs)
+## ---------------------------------------
+## cvmfs is a popular tool for distributing the software of the experiments,
+## in read-only mode, through the nodes of a distributed computing system.
+## This platform relies on the the CSI provided by the GitHub repository
+## https://github.com/cvmfs-contrib/cvmfs-csi.
+
+# cvmfsUseGeoAPI enables using the GeoAPI of cvmfs in config.d
+cvmfsUseGeoAPI: 'yes'
+
+# cvmfsHttpProxy defines the Http proxy to access the cvmfs stratum0
+cvmfsHttpProxy: DIRECT
+
+# cvmfsQuotaLimit indicates the size of the local quota
+cvmfsQuotaLimit: 1000
+
+# cvmfsCacheBase indicates the position for the local cache
+cvmfsCacheBase: /cvmfs-localcache
+
+# cvmfsPersistentVolumeClaim indicates the name 
+cvmfsPersistentVolumeClaim: cvmfs2
+cvmfsNamespaces:
+  - default
+  - vkd
+
+
+
+################################################################################
 ## Accelerators (GPUs)
 ## -------------------
 
@@ -109,7 +137,7 @@ acceleratorKnownModels:
     node_selector:
       accelerator: a100
     memory_gb: 10
-    preference_weight: 90
+    preference_weight: 9
     type: gpu
     extended_resource: nvidia.com/gpu
 
@@ -118,7 +146,7 @@ acceleratorKnownModels:
     node_selector:
       accelerator: t4
     memory_gb: 16
-    preference_weight: 80
+    preference_weight: 8
     type: gpu
     extended_resource: nvidia.com/gpu
 
@@ -127,7 +155,7 @@ acceleratorKnownModels:
     node_selector:
       accelerator: rtx5000
     memory_gb: 32
-    preference_weight: 70
+    preference_weight: 7
     type: gpu
     extended_resource: nvidia.com/gpu
 
@@ -136,7 +164,7 @@ acceleratorKnownModels:
     node_selector:
       accelerator: a100
     memory_gb: 20
-    preference_weight: 60
+    preference_weight: 6
     type: gpu
     extended_resource: nvidia.com/gpu
 
@@ -145,7 +173,7 @@ acceleratorKnownModels:
     node_selector:
       accelerator: a100
     memory_gb: 30
-    preference_weight: 50
+    preference_weight: 5
     type: gpu
     extended_resource: nvidia.com/gpu
 
@@ -154,7 +182,7 @@ acceleratorKnownModels:
     node_selector:
       accelerator: a100
     memory_gb: 40
-    preference_weight: 30
+    preference_weight: 3
     type: gpu
     extended_resource: nvidia.com/gpu
 
@@ -163,7 +191,7 @@ acceleratorKnownModels:
     node_selector:
       accelerator: a100
     memory_gb: 80
-    preference_weight: 20
+    preference_weight: 2
     type: gpu
     extended_resource: nvidia.com/gpu
 
@@ -279,7 +307,7 @@ rbac:
 jhubHomeDirectoryName: home
 jhubSplashMessage: Welcome to the AI_INFN Platform!
 jhubLabImages: 
-  AI_INFN Multi-environment setup: harbor.cloud.infn.it/testbed-dm/ai-infn:0.1
+  AI_INFN Multi-environment setup: harbor.cloud.infn.it/testbed-dm/ai-infn:0.2-pre1
 
 
 ################################################################################
