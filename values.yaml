@@ -259,6 +259,8 @@ vkdPriorityClasses:
       Fire priority can kill other jobs to get resources. 
       Can waste CPU resources. Should be used upon authorization.
 
+
+
 ################################################################################
 ## Static website configuration (docs/blog ...)
 ## --------------------------------------------
@@ -293,8 +295,7 @@ jhubAdminIamGroups:
 jhubIamClientId: 
 jhubIamClientSecret: 
 jhubCryptKey: 
-
-
+jhubMetricsApiKey:
 
 jhubDatabaseLocalPath: /var/local
 jhubDebug: false
@@ -433,6 +434,12 @@ jupyterhub:
             name: jhub-env
             key: jupyterhubCryptKey
 
+      JUPYTERHUB_METRICS_API_KEY:
+        valueFrom: 
+          configMapKeyRef:
+            name: jhub-env
+            key: metricsApiKey
+
       NFS_SERVER_ADDRESS:
         valueFrom:
           configMapKeyRef:
@@ -552,7 +559,7 @@ jupyterhub:
           configMapKeyRef:
             name: jhub-env
             key: vkdImageBranch
-      
+
 
 
 

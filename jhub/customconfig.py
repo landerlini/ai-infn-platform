@@ -66,6 +66,10 @@ CONFIGMAP_MOUNT_PATH = Path(
     )
 )
 
+# Metrics custom token
+METRICS_API_KEY = os.environ.get("JUPYTERHUB_METRICS_API_KEY")
+
+
 # Virtual Kubelet Dispatcher configuration
 ENABLE_VKD = os.environ.get("ENABLE_VKD", "").lower() in ["true", "yes", "y"]
 VKD_SIDECAR_IMAGE = os.environ.get("VKD_SIDECAR_IMAGE", "harbor.cloud.infn.it/testbed-dm/vkd-dev:v0.0")
@@ -755,4 +759,32 @@ async def aiinfn_option_form (self):
       )
 
 c.KubeSpawner.options_form = aiinfn_option_form
+
+################################################################################
+## Metrics role setup
+
+## Copy-pasted from: 
+## https://discourse.jupyter.org/t/how-can-prometheus-scrape-metrics-from-jupyterhub/2662/5
+if METRICS_API_KEY is None:
+  logging.warning("JUPYTERHUB_METRICS_API_KEY not set. Dedicated role will not be set up.")
+else:
+  c.JupyterHub.services = [
+      {
+        "name": "service-prometheus",
+        "api_token": METRICS_API_KEY,
+        },
+      ]
+
+  c.JupyterHub.load_roles = [
+      {
+        "name": "service-metrics-role",
+        "description": "access metrics",
+        "scopes": [
+          "read:metrics",
+          ],
+        "services": [
+          "service-prometheus",
+          ],
+        }
+      ]
 
