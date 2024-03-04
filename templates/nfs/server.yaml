@@ -82,7 +82,7 @@ spec:
               mountPath: {{ .Values.nfsServerInternalMountPath }}
               
         - name: prometheus-client
-          image: "harbor.cloud.infn.it/testbed-dm/python-prometheus-exporter:0.1-pre8"
+          image: "harbor.cloud.infn.it/testbed-dm/python-prometheus-exporter:0.1-pre16"
           imagePullPolicy: Always
           ports: 
             - containerPort: 9400

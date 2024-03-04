@@ -28,6 +28,7 @@ from prometheus_client.core import (
 import os
 import json
 import time
+import timeit
 import logging
 from pathlib import Path
 from typing import Dict
@@ -49,9 +50,17 @@ VOLUMES = json.loads(
     )
   )
 
-logging.basicConfig(level=logging.DEBUG if DEBUG else logging.INFO)
+METRICS = dict()
 
-class CustomCollector(Collector):
+log_format = '%(asctime)-22s %(levelname)-8s %(message)-90s'
+logging.basicConfig(
+    format=log_format,
+    level=logging.DEBUG if DEBUG else logging.INFO,
+)
+
+
+
+class FilesystemRunner:
     @staticmethod
     def _get_paths():
       """Internal. Returns the list of paths to scan."""
@@ -74,7 +83,7 @@ class CustomCollector(Collector):
           )
 
         ## Fill used disk metrics
-        for label, path in CustomCollector._get_paths().items():
+        for label, path in FilesystemRunner._get_paths().items():
           used_disk.add_metric([label], 
             sum(f.stat().st_size for f in path.glob('**/*') if f.is_file())
           )
@@ -84,7 +93,7 @@ class CustomCollector(Collector):
     @staticmethod
     def number_of_files():
         """Used disk metric"""
-        logging.debug("Computing used disk")
+        logging.debug("Computing number of files")
         
         # Number of files
         number_of_files = CounterMetricFamily(
@@ -94,7 +103,7 @@ class CustomCollector(Collector):
           )
 
         ## Fill used disk metrics
-        for label, path in CustomCollector._get_paths().items():
+        for label, path in FilesystemRunner._get_paths().items():
           number_of_files.add_metric([label], 
             len([f for f in path.glob('**/*') if f.is_file()])
           )
@@ -105,6 +114,7 @@ class CustomCollector(Collector):
     def avail_disk(volumes: Dict[str, str]):
       """Available disk size"""
       # Available disk size
+      logging.debug("Computing Available disk space")
       avail_disk = GaugeMetricFamily(
         'storage_avail_disk', 
         'Disk storage available in bytes', 
@@ -123,7 +133,8 @@ class CustomCollector(Collector):
     @staticmethod
     def total_disk(volumes: Dict[str, str]):
       """Total volume size"""
-      # Available disk size
+      logging.debug("Computing TOTAL disk space")
+      # Total disk size
       total_disk = GaugeMetricFamily(
         'storage_total_disk', 
         'Total disk storage size in bytes', 
@@ -138,12 +149,39 @@ class CustomCollector(Collector):
 
       return total_disk
 
+    def update_metrics(self):
+        global METRICS
+        start_time = timeit.default_timer()
+        METRICS['number_of_files'] = self.number_of_files()
+        METRICS['used_disk'] = self.used_disk()
+        METRICS['avail_disk'] = self.avail_disk(VOLUMES)
+        METRICS['total_disk'] = self.total_disk(VOLUMES)
+        stop_time = timeit.default_timer()
+        logging.debug(f"Last scan required {stop_time - start_time} seconds")
+        METRICS['scan_time'] = GaugeMetricFamily(
+          'storage_scan_time_seconds', 
+          'Time required to perform a full scan of the filesystem', 
+          float(stop_time - start_time)
+          )
+
+
+class CustomCollector(Collector):
     def collect(self):
       """Collect aggregation function"""
-      yield self.number_of_files()
-      yield self.used_disk()
-      yield self.avail_disk(VOLUMES)
-      yield self.total_disk(VOLUMES)
+      if 'number_of_files' in METRICS:
+        yield METRICS['number_of_files']
+
+      if 'used_disk' in METRICS:
+        yield METRICS['used_disk']
+
+      if 'avail_disk' in METRICS:
+        yield METRICS['avail_disk']
+
+      if 'total_disk' in METRICS:
+        yield METRICS['total_disk']
+
+      if 'scan_time' in METRICS:
+        yield METRICS['scan_time']
 
 
 REGISTRY.register(CustomCollector())
@@ -158,6 +196,10 @@ if __name__ == '__main__':
     # Start up the server to expose the metrics.
     start_http_server(PORT)
 
-    while True: time.sleep(10)
+    fs_runner = FilesystemRunner()
+
+    while True: 
+        fs_runner.update_metrics()
+        time.sleep(10)
 
 

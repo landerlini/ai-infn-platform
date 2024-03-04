@@ -1,4 +1,4 @@
-# Image name: harbor.cloud.infn.it/testbed-dm/python-prometheus-exporter:0.1-pre3
+# Image name: harbor.cloud.infn.it/testbed-dm/python-prometheus-exporter:0.1-pre12
 FROM python:alpine
 
 RUN python3 -m pip install prometheus-client 
