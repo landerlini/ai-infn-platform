@@ -24,7 +24,7 @@ import warnings
 import asyncio
 import shutil
 
-from typing import Dict
+from typing import Dict, Collection
 
 import jinja2
 import kubernetes_asyncio as k8s
@@ -250,9 +250,27 @@ def _prefer_accelerator(node_selectors: Dict[str, str], weight=1):
 class InfnSpawner(KubeSpawner):
 
     @staticmethod
+    def is_node_reserved(node, groups):
+      if node.spec.taints is None:
+        return False
+
+      for taint in node.spec.taints:
+        if taint.key == 'reserved':
+          if taint.value not in groups:
+            logging.warning(
+                f"Node {node.metadata.name} skipped as reserved to '{taint.value}' group. "
+                f"User groups: {groups}."
+                )
+            return True
+
+      return False
+
+
+    @staticmethod
     async def get_accelerators(
       status_key: Literal["allocated", "allocatable", "capacity"] = "allocatable",
-      default_extended_resource: str = "nvidia.com/gpu"
+      default_extended_resource: str = "nvidia.com/gpu",
+      groups: Collection[str] = tuple(),
       ):
       """
       Complete the list of known accelerators with the number of 
@@ -270,13 +288,13 @@ class InfnSpawner(KubeSpawner):
       async with kubernetes_api() as k:
         nodes = await k.list_node()
 
-      pprint (nodes)
-
       # Copy the list
       return_list = [dict(**acc, count=0) for acc in GPU_MODEL_DESCRIPTION]
 
       if status_key in ['allocatable', 'capacity']:
         for node in nodes.items:
+          if InfnSpawner.is_node_reserved(node, groups):
+            continue
           accelerator = node.metadata.labels.get("nvidia.com/gpu.product", "none")
           if accelerator != "none":
             if hasattr(node.status, status_key):
@@ -294,6 +312,7 @@ class InfnSpawner(KubeSpawner):
 
         for pod in pods.items:
           node = node_dict[pod.spec.node_name]
+          if InfnSpawner.is_node_reserved(node, groups): continue
           accelerator = node.metadata.labels.get("nvidia.com/gpu.product", "none")
           if accelerator != "none":
             for return_item in return_list:
@@ -318,7 +337,6 @@ class InfnSpawner(KubeSpawner):
         options = {}
         options['img'] = formdata['img']
         container_image = ''.join(formdata['img'])
-        print("SPAWN: " + container_image + " IMAGE" )
         self.image = container_image
 
         options['cpu'] = formdata['cpu']
@@ -363,6 +381,11 @@ class InfnSpawner(KubeSpawner):
               weight=100
               )
           ]
+
+        self.tolerations += [
+            {"key": "reserved", "operator": "Equal", "value": g, "effect": "PreferNoSchedule"}
+            for g in self.get_user_groups()
+        ]
 
         logging.info("Affinity - preferred")
         logging.info(self.node_affinity_preferred)
@@ -719,10 +742,11 @@ c.KubeSpawner.start_timeout = START_TIMEOUT
 
 async def aiinfn_option_form (self):
     file_name = os.path.join(CONFIGMAP_MOUNT_PATH / "spawn_form.jinja2.html")
-    accelerators = await self.get_accelerators("allocatable", "nvidia.com/gpu")
+    groups = self.get_user_groups()
+    accelerators = await self.get_accelerators("allocatable", "nvidia.com/gpu", groups=groups)
     allocated_accelerators = {
         acc['name']: acc['count'] 
-        for acc in await self.get_accelerators("allocated", "nvidia.com/gpu")
+        for acc in await self.get_accelerators("allocated", "nvidia.com/gpu", groups=groups)
         }
 
     for acc in accelerators:
