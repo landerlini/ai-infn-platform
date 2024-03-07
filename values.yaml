@@ -308,14 +308,14 @@ rbac:
 jhubHomeDirectoryName: home
 jhubSplashMessage: Welcome to the AI_INFN Platform!
 jhubLabImages: 
-  AI_INFN Multi-environment setup: harbor.cloud.infn.it/testbed-dm/ai-infn:0.2-pre1
+  AI_INFN Multi-environment setup: harbor.cloud.infn.it/testbed-dm/ai-infn:0.2
 
 
 # jhubExtResAllocExporterEnabled enables a custom prometheus exporter for gpu allocation
 jhubExtResAllocExporterEnabled: true
   
 # jhubCustomExporterImage defines the image used for the custom exporter
-jhubCustomExporterImage: "harbor.cloud.infn.it/testbed-dm/python-prometheus-exporter:0.1-pre25"
+jhubCustomExporterImage: "harbor.cloud.infn.it/testbed-dm/python-prometheus-exporter:0.2"
 
 # jhubExtResAllocExporterNamespaces list the namespaces monitored for allocated resources
 jhubExtResAllocExporterNamespaces:
