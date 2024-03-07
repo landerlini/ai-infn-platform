@@ -45,5 +45,5 @@ data:
     vkdImageBranch: {{ .Values.vkdImageBranch | default "main" }}
     vkdNamespace: {{ .Values.vkdNamespace | default "vkd" }}
 
-    metricsApiKey:  {{ required "Missing jhubMetricApiKey in values.yaml" .Values.jhubMetricsApiKey }}
+    metricsApiKey:  {{ required "Missing jhubMetricApiKey in values.yaml" .Values.jhubMetricApiKey }}
 
