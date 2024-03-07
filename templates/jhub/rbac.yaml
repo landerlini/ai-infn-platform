@@ -10,7 +10,7 @@ metadata:
     {{- include "jupyterhub.labels" . | nindent 4 }}
 rules:
   - apiGroups: [""]       # "" indicates the core API group
-    resources: ["nodes"]
+    resources: ["nodes", "pods"]
     verbs: ["get", "watch", "list"]
 ---
 kind: ClusterRoleBinding

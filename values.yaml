@@ -311,7 +311,36 @@ jhubLabImages:
   AI_INFN Multi-environment setup: harbor.cloud.infn.it/testbed-dm/ai-infn:0.2-pre1
 
 
-################################################################################
+# jhubExtResAllocExporterEnabled enables a custom prometheus exporter for gpu allocation
+jhubExtResAllocExporterEnabled: true
+  
+# jhubCustomExporterImage defines the image used for the custom exporter
+jhubCustomExporterImage: "harbor.cloud.infn.it/testbed-dm/python-prometheus-exporter:0.1-pre25"
+
+# jhubExtResAllocExporterNamespaces list the namespaces monitored for allocated resources
+jhubExtResAllocExporterNamespaces:
+  - default
+  - vkd
+
+# jhubExtResAllocExporterExtendedResources list extended resources to track
+jhubExtResAllocExporterExtendedResources:
+  - "nvidia.com/gpu"
+  - "nvidia.com/mig-1g.10gb"
+  - "nvidia.com/mig-2g.20gb"
+  - "nvidia.com/mig-3g.30gb"
+  - "nvidia.com/mig-4g.40gb"
+  - "nvidia.com/mig-1g.5gb"
+  - "nvidia.com/mig-2g.10gb"
+  - "nvidia.com/mig-3g.15gb"
+  - "nvidia.com/mig-4g.20gb"
+
+# jhubExtResAllocExporterDebug enables verbose messages in the stdout log of the exporter
+jhubExtResAllocExporterDebug: no
+
+# jhubExtResAllocExporterNodeLabelForModel defines the node label to identify the accelerator model
+jhubExtResAllocExporterNodeLabelForModel: "nvidia.com/gpu.product"
+
+###############################################################################
 ## JupyterHub Helm chart configuration
 jupyterhub:
   ingress:

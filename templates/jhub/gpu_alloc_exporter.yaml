@@ -1,0 +1,81 @@
+{{ if .Values.jhubExtResAllocExporterEnabled }}
+
+# Create a deployment for the exporter
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ext-res-alloc-exporter
+  labels:
+    app: ext-res-alloc-exporter
+spec:
+  replicas: 1
+  minReadySeconds: 5
+  selector:
+    matchLabels:
+      app: ext-res-alloc-exporter
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 2
+  template:
+    metadata:
+      labels:
+        app: ext-res-alloc-exporter
+        tier: service
+    spec:
+      serviceAccount: {{ include "jupyterhub.hub.fullname" . }}
+      containers:
+      - name: exporter
+        image: {{ .Values.jhubCustomExporterImage }}
+        imagePullPolicy: Always
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "250m"
+
+        ports:
+        - containerPort: 8080
+
+        command: ["python3", "gpu_alloc_exporter.py"]
+
+        env:
+          - name: PORT
+            value: "8080"
+          - name: MONITORED_NAMESPACES
+            value: {{ .Values.jhubExtResAllocExporterNamespaces | toJson | squote }}
+          - name: EXTENDED_RESOURCES
+            value: {{ .Values.jhubExtResAllocExporterExtendedResources | toJson | squote }}
+          - name: DEBUG
+            value: {{ .Values.jhubExtResAllocExporterDebug | squote }}
+          - name: NODE_LABEL_FOR_MODEL
+            value: {{ .Values.jhubExtResAllocExporterNodeLabelForModel | squote }}
+
+
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: ext-res-alloc-exporter
+
+  labels:
+    app: ext-res-alloc-exporter
+    tier: service
+
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    name: http
+    targetPort: 8080
+  selector:
+    app: ext-res-alloc-exporter
+
+
+{{ end }}
+

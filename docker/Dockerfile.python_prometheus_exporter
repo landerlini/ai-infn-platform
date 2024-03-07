@@ -1,9 +1,14 @@
-# Image name: harbor.cloud.infn.it/testbed-dm/python-prometheus-exporter:0.1-pre12
+# Image name: harbor.cloud.infn.it/testbed-dm/python-prometheus-exporter:0.1-pre17
 FROM python:alpine
 
-RUN python3 -m pip install prometheus-client 
+RUN python3 -m pip install prometheus-client kubernetes
 
-COPY ./occupancy_exporter.py /usr/bin/occupancy_exporter.py
+RUN mkdir /custom_exporters
 
-CMD ["python3", "/usr/bin/occupancy_exporter.py"]
+COPY ./occupancy_exporter.py /custom_exporters/occupancy_exporter.py
+COPY ./gpu_alloc_exporter.py /custom_exporters/gpu_alloc_exporter.py
+
+WORKDIR /custom_exporters
+
+CMD ["python3", "/custom_exporters/occupancy_exporter.py"]
 
