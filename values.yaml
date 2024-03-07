@@ -295,7 +295,7 @@ jhubAdminIamGroups:
 jhubIamClientId: 
 jhubIamClientSecret: 
 jhubCryptKey: 
-jhubMetricsApiKey:
+jhubMetricApiKey:
 
 jhubDatabaseLocalPath: /var/local
 jhubDebug: false
