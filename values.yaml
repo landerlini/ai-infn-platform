@@ -97,7 +97,7 @@ cvmfsQuotaLimit: 1000
 cvmfsCacheBase: /cvmfs-localcache
 
 # cvmfsPersistentVolumeClaim indicates the name 
-cvmfsPersistentVolumeClaim: cvmfs2
+cvmfsPersistentVolumeClaim: cvmfs
 cvmfsNamespaces:
   - default
   - vkd
