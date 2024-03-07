@@ -304,3 +304,13 @@ spec:
             name: cvmfs-csi-config-d
           name: etc-cvmfs-config-d
       priorityClassName: system-node-critical
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: cvmfs
+  labels:
+    app: cvmfs-csi
+    component: controllerplugin
+provisioner: cvmfs.csi.cern.ch
+
