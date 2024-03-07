@@ -315,7 +315,7 @@ jhubLabImages:
 jhubExtResAllocExporterEnabled: true
   
 # jhubCustomExporterImage defines the image used for the custom exporter
-jhubCustomExporterImage: "harbor.cloud.infn.it/testbed-dm/python-prometheus-exporter:0.1"
+jhubCustomExporterImage: "harbor.cloud.infn.it/testbed-dm/python-prometheus-exporter:0.2"
 
 # jhubExtResAllocExporterNamespaces list the namespaces monitored for allocated resources
 jhubExtResAllocExporterNamespaces:
