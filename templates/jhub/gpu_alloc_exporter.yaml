@@ -40,7 +40,7 @@ spec:
         ports:
         - containerPort: 8080
 
-        command: ["python3", "gpu_alloc_exporter.py"]
+        command: ["python3", "/custom_exporters/gpu_alloc_exporter.py"]
 
         env:
           - name: PORT
