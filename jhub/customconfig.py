@@ -261,7 +261,7 @@ class InfnSpawner(KubeSpawner):
       Return the list defined in GPU_MODEL_DESCRIPTION with an additional
       `count` key reporting the number of each known accelerator model.
 
-      The model `name` must match from the `accelerator` label.
+      The model `name` must match from the `nvidia.com/gpu.product` label.
 
       Requires additional ClusterRole and ClusterRoleBinding beyond 
       the jupyterhub helm chart to work.
@@ -277,7 +277,7 @@ class InfnSpawner(KubeSpawner):
 
       if status_key in ['allocatable', 'capacity']:
         for node in nodes.items:
-          accelerator = node.metadata.labels.get("accelerator", "none")
+          accelerator = node.metadata.labels.get("nvidia.com/gpu.product", "none")
           if accelerator != "none":
             if hasattr(node.status, status_key):
               for return_item in return_list:
@@ -294,7 +294,7 @@ class InfnSpawner(KubeSpawner):
 
         for pod in pods.items:
           node = node_dict[pod.spec.node_name]
-          accelerator = node.metadata.labels.get("accelerator", "none")
+          accelerator = node.metadata.labels.get("nvidia.com/gpu.product", "none")
           if accelerator != "none":
             for return_item in return_list:
               if accelerator == return_item['name']:
@@ -335,7 +335,7 @@ class InfnSpawner(KubeSpawner):
         if accelerator in ["none"]:
           self.node_affinity_preferred = [
             _prefer_accelerator(
-              acc.get('node_selector', {'accelerator': acc.get('name')}), 
+              acc.get('node_selector', {'nvidia.com/gpu.product': acc.get('name')}), 
               weight=acc.get('preference_weight', 50)
               )
             for acc in GPU_MODEL_DESCRIPTION
@@ -359,7 +359,7 @@ class InfnSpawner(KubeSpawner):
 
           self.node_affinity_preferred = [
             _prefer_accelerator(
-              gpu_data.get('node_selector', {'accelerator': gpu_data.get('name')}), 
+              gpu_data.get('node_selector', {'nvidia.com/gpu.operator': gpu_data.get('name')}), 
               weight=100
               )
           ]

@@ -4,9 +4,9 @@ apiVersion: kueue.x-k8s.io/v1beta1
 kind: ResourceFlavor
 metadata:
   {{ if get . "type" -}}
-  name: {{ get . "type" -}}-{{- get . "name" -}}
+  name: {{ get . "type" -}}-{{- get . "short_name" -}}
   {{ else -}}
-  name: {{ get . "name" -}}
+  name: {{ get . "short_name" -}}
   {{- end }} 
 spec:
   nodeLabels:
@@ -28,9 +28,9 @@ spec:
     flavors:
     {{ range .Values.acceleratorKnownModels }}
     - {{ if get . "type" -}}
-      name: {{ get . "type" -}}-{{- get . "name" -}}
+      name: {{ get . "type" -}}-{{- get . "short_name" -}}
       {{ else -}}
-      name: {{ get . "name" -}}
+      name: {{ get . "short_name" -}}
       {{- end }} 
       resources:
       - name: "cpu"

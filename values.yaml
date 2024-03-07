@@ -125,6 +125,7 @@ gpuNodeTaints:
 # models not listed here won't be usable even if made allocatable by Kubernetes.
 acceleratorKnownModels:
   - name: cpu-only
+    short_name: cpu-only
     description: None
     node_selector:
       accelerator: none
@@ -132,64 +133,71 @@ acceleratorKnownModels:
     preference_weight: 100
     type: 
 
-  - name: mig-1g.10gb
+  - name: NVIDIA-A100-80GB-PCIe-MIG-1g.10gb
+    short_name: mig-1g.10gb
     description: nVidia A100 1g MIG partition (10 GB)
     node_selector:
-      accelerator: a100
+      nvidia.com/gpu.product: NVIDIA-A100-80GB-PCIe-MIG-1g.10gb
     memory_gb: 10
     preference_weight: 9
     type: gpu
     extended_resource: nvidia.com/gpu
 
-  - name: t4
+  - name: Tesla-T4
+    short_name: t4
     description: nVidia T4 (16 GB)
     node_selector:
-      accelerator: t4
+      nvidia.com/gpu.product: Tesla-T4
     memory_gb: 16
     preference_weight: 8
     type: gpu
     extended_resource: nvidia.com/gpu
 
-  - name: rtx5000
+  - name: Quadro-RTX-5000
+    short_name: rtx5000
     description: nVidia RTX5000 (32 GB)
     node_selector:
-      accelerator: rtx5000
+      nvidia.com/gpu.product: Quadro-RTX-5000
     memory_gb: 32
     preference_weight: 7
     type: gpu
     extended_resource: nvidia.com/gpu
 
-  - name: mig-2g.20gb
+  - name: NVIDIA-A100-80GB-PCIe-MIG-2g.20gb
+    short_name: mig-2g.20gb
     description: nVidia A100 2g MIG partition (20 GB)
     node_selector:
-      accelerator: a100
+      nvidia.com/gpu.product: NVIDIA-A100-80GB-PCIe-MIG-2g.20gb
     memory_gb: 20
     preference_weight: 6
     type: gpu
     extended_resource: nvidia.com/gpu
 
-  - name: mig-3g.30gb
+  - name: NVIDIA-A100-80GB-PCIe-MIG-3g.30gb
+    short_name: mig-3g.30gb
     description: nVidia A100 3g MIG partition (30 GB)
     node_selector:
-      accelerator: a100
+      nvidia.com/gpu.product: NVIDIA-A100-80GB-PCIe-MIG-3g.30gb
     memory_gb: 30
     preference_weight: 5
     type: gpu
     extended_resource: nvidia.com/gpu
 
-  - name: mig-4g.40gb
+  - name: NVIDIA-A100-80GB-PCIe-MIG-4g.40gb
+    short_name: mig-4g.40gb
     description: nVidia A100 4g MIG partition (40 GB)
     node_selector:
-      accelerator: a100
+      nvidia.com/gpu.product: NVIDIA-A100-80GB-PCIe-MIG-4g.40gb
     memory_gb: 40
     preference_weight: 3
     type: gpu
     extended_resource: nvidia.com/gpu
 
-  - name: a100
+  - name: NVIDIA-A100-80GB-PCIe-MIG-7g.80gb
+    short_name: a100
     description: nVidia A100 (80 GB)
     node_selector:
-      accelerator: a100
+      nvidia.com/gpu.product: NVIDIA-A100-80GB-PCIe-MIG-7g.80gb
     memory_gb: 80
     preference_weight: 2
     type: gpu
