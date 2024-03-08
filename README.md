@@ -21,7 +21,9 @@ bastionAdminPublicKey: # Put here a public RSA key for accessing the bastion as 
 jhubIamClientId: # Put here the id of a client on iam.cloud.infn.it
 jhubIamClientSecret: # Put here the secret of your client
 jhubCryptKey: # Generate and copy here a deployment-unique token: `openssl rand -hex 32`
-jhubMetricApiKey:  # Generate and copy here a deployment-unique token: `openssl rand -hex 16`
+jhubMetricApiKey:  # Generate and copy here a deployment-unique token: `openssl rand -hex 32`
+
+dashboardFlaskSecret: # Generate and copy here a deployment-unique token: `openssl rand -hex 32`
 
 jupyterhub:
   proxy:

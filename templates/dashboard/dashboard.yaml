@@ -1,6 +1,6 @@
-{{ if .Values.wwwEnabled }}
+{{ if .Values.dashboardEnabled }}
 
-# Ensure existing bastion namespace
+# Ensure existing dashboard namespace
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -10,7 +10,7 @@ metadata:
 
 ---
 
-{{ if .Values.wwwEnabled }}
+{{ if .Values.dashboardEnabled }}
 
 # Create deployment
 apiVersion: apps/v1
@@ -37,6 +37,7 @@ spec:
         app: dashboard
         tier: service
     spec:
+      serviceAccount: {{ .Values.dashboardServiceAccount | default "dashboard-reader" }}
       containers:
       - name: dashboard
         image: petrinir/dashboard:latest
@@ -46,8 +47,8 @@ spec:
             memory: "64Mi"
             cpu: "50m"
           limits:
-            memory: "128Mi"
-            cpu: "250m"
+            memory: {{ .Values.dashboardMemoryLimit | default "128Mi" }}
+            cpu: {{ .Values.dashboardCpuLimit | default "250m" }}
         ports:
         - containerPort: 80
         command: 
@@ -57,6 +58,8 @@ spec:
           - |          
             git clone https://github.com/landerlini/ai-infn-dashboard.git 
             cd ai-infn-dashboard
+            git checkout {{ .Values.dashboardGitBranch | default "master" }}
+            pip install kubernetes
             python3 -m aiinfn_dash
         env:
           - name: IAM_CLIENT_ID
@@ -66,7 +69,7 @@ spec:
           - name: IAM_REDIRECT_URI
             value: https://{{ .Values.hostname }}/dash/callback
           - name: FLASK_SECRET
-            value: {{ .Values.jhubMetricApiKey }}
+            value: {{ .Values.dashboardFlaskSecret | default .Values.jhubMetricApiKey }}
           - name: AIINFN_PORT
             value: "80"
             
@@ -74,7 +77,7 @@ spec:
 
 ---
 
-{{ if .Values.wwwEnabled }}
+{{ if .Values.dashboardEnabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -96,7 +99,82 @@ spec:
 
 ---
 
-{{ if .Values.wwwEnabled }}
+{{ if .Values.dashboardEnabled }}
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app: dashboard
+    component: dashboard
+  name: dashboard
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - pods/log
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups:
+  - "batch"
+  resources:
+  - jobs
+  verbs:
+  - get
+  - watch
+  - list
+  - delete
+
+- apiGroups:
+  - "kueue.x-k8s.io"
+  resources:
+  - workloads
+  - localqueues
+  - clusterqueues
+  - resourceflavors
+  verbs:
+  - get
+  - watch
+  - list
+
+{{ end }}
+
+---
+
+{{ if .Values.dashboardEnabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+    name: {{ .Values.dashboardServiceAccount | default "dashboard-reader" }}
+    namespace: dashboard
+{{ end }}
+
+---
+
+{{ if .Values.dashboardEnabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app: dashboard
+  name: {{ .Values.dashboardServiceAccount | default "dashboard-reader" }}
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: dashboard
+subjects:
+- kind: ServiceAccount
+  name: {{ .Values.dashboardServiceAccount | default "dashboard-reader" }}
+  namespace: {{ .Release.Namespace }}
+{{ end }}
+
+---
+
+{{ if .Values.dashboardEnabled }}
 
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -122,11 +200,5 @@ spec:
         pathType: ImplementationSpecific
 
 {{ end }}
-
-
-
-
-
-
 
 

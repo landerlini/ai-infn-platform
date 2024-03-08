@@ -383,7 +383,7 @@ class InfnSpawner(KubeSpawner):
           ]
 
         self.tolerations += [
-            {"key": "reserved", "operator": "Equal", "value": g, "effect": "PreferNoSchedule"}
+            {"key": "reserved", "operator": "Equal", "value": g, "effect": "NoSchedule"}
             for g in self.get_user_groups()
         ]
 

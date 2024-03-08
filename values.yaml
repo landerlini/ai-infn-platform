@@ -286,6 +286,30 @@ wwwPrefix: /docs
 # Important: the `wwwPrefix` must be reproduced as a directory-tree structure 
 # in the filesystem.
 wwwPathToStaticWebsite: /www
+ 
+################################################################################
+## Dashboard configuration
+## -----------------------
+
+# dashboardEnabled enables the dash personal user's dashboard under /dash
+dashboardEnabled: true
+
+# dashboardMemoryLimit defines the limit to memory of each dashboard container
+dashboardMemoryLimit: "128Mi"
+
+# dashboardCpuLimit defines the limit to the memory of each dashboard container
+dashboardCpuLimit: "250m"
+
+# dashboardGitBranch defines the branch of github.com/landerlini/ai-infn-dashboard
+# used for GitOps (currently the repository is only updated on pod manual deletion)
+dashboardGitBranch: "master"
+
+# dashboardFlaskSecret is the secret of the web application for encrypting sessions
+dashboardFlaskSecret: 
+
+# dashboardServiceAccount is the name of the service account of the dashboard
+dashboardServiceAccount: "dashboard-reader"
+
 
 
 ################################################################################
