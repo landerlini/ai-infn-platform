@@ -1,4 +1,4 @@
-# Image name: harbor.cloud.infn.it/testbed-dm/ai-infn:0.2-pre2
+# Image name: harbor.cloud.infn.it/testbed-dm/ai-infn:0.2.1
 FROM jupyter/minimal-notebook:latest
 
 USER root
@@ -33,6 +33,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
       screen \
       openssh-client \
       fuse \
+      rsync \
       ssh && \
     DEBIAN_FRONTEND=noninteractive apt-get clean && \
     rm -rf /var/lib/apt/lists/*
