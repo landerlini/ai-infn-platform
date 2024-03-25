@@ -418,6 +418,17 @@ class InfnSpawner(KubeSpawner):
       logging.info(f"{self.get_user_name()} { 'has' if result else 'has not' } permission '{op}'")
       return result
 
+    def get_group_allowance(self, resource):
+      str_allowances = [g.properties.get(resource) for g in self.user.groups if resource in g.properties.keys()] 
+      ret = []
+      for allowance in str_allowances:
+        try:
+          ret.append(int(allowance))
+        except ValueError:
+          logging.error(f"Failed allowance validation for {resource}: invalid value {allowance}.")
+
+      return sorted(list(set(ret)))
+
     #################################################################################
     #### VOLUMES
     #### -------
@@ -765,8 +776,8 @@ async def aiinfn_option_form (self):
       return jinja2.Template(f.read()).render(
         splash_message=self.splash_manager.message(**id_vars),
         **id_vars,
-        cpus=[1, 2, 3, 4, 8],
-        mem_sizes=[2, 4, 8],
+        cpus=sorted([1, 2, 3, 4, 8] + self.get_group_allowance('cpu')),
+        mem_sizes=sorted([2, 4, 8] + self.get_group_allowance('mem_gb')),
         accelerators=[
           dict(
               type="gpu",
