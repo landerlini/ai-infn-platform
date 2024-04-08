@@ -47,6 +47,8 @@ IAM_CLIENT_SECRET = os.environ["IAM_CLIENT_SECRET"]
 START_TIMEOUT = int(os.environ.get("START_TIMEOUT", 20))
 NFS_MOUNT_POINT = Path(os.environ.get("NFS_MOUNT_POINT", "/nfs-shared"))
 NFS_SERVER_ADDRESS = os.environ.get("NFS_SERVER_ADDRESS")
+JFS_MOUNT_POINT = Path(os.environ.get("JFS_MOUNT_POINT", "/jfs"))
+JFS_PVC_NAME = os.environ.get("JFS_PVC_NAME", "juicefs")
 STARTUP_SCRIPT = Path(os.environ.get("STARTUP_SCRIPT", "/envs/setup.sh"))
 DEBUG = os.environ.get("DEBUG", "").lower() in ["true", "yes", "y"]
 HOME_NAME = os.environ.get("HOME_NAME", "home")
@@ -464,6 +466,23 @@ class InfnSpawner(KubeSpawner):
         name=name, 
         mountPath=path,
     )
+
+    def jfs_volume(self, name):
+      if not os.path.exists(JFS_MOUNT_POINT/name):
+        os.mkdir(JFS_MOUNT_POINT/name)
+      return dict(
+        name=name, 
+        persistentVolumeClaim=dict(
+          claimName=JFS_PVC_NAME,
+        )
+      )  
+
+    def jfs_mount(self, name, path, protected=False):
+      return dict(
+        name=name, 
+        mountPath=path,
+        subPath=name,
+    )
       
     @property 
     def volumes(self):
@@ -479,6 +498,9 @@ class InfnSpawner(KubeSpawner):
           self.nfs_volume(f'public'),
           self.nfs_volume(f'envs'),
           ]
+
+        if self.check_priviledge('juicefs'):
+          volumes.append (self.jfs_volume(f'jfs-user-{username}'))
 
         for volume in SYSTEM_VOLUMES:
           if self.check_priviledge(volume):
@@ -500,12 +522,16 @@ class InfnSpawner(KubeSpawner):
       volumes = [
         {"name": "secret-mask", "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount", "readOnly": True},
       ]
+
       if NFS_SERVER_ADDRESS is not None:
         volumes += [
           {"name": f"user-{username}", "mountPath": f"/{HOME_NAME}/private"},
           {"name": "public", "mountPath": f"/{HOME_NAME}/shared/public"},
           {"name": "envs", "mountPath": "/envs", "readOnly": not self.check_priviledge("envs")},
           ]
+
+        if self.check_priviledge('juicefs'):
+          volumes.append(self.jfs_mount(f"jfs-user-{username}", "/home/jfs"))
 
         for volume in SYSTEM_VOLUMES:
           if self.check_priviledge(volume):

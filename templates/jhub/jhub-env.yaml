@@ -13,6 +13,8 @@ data:
     jupyterhubCryptKey: {{ required "Missing jhubCryptKey" .Values.jhubCryptKey }} 
     nfsServerAddress:  {{ required "Missing nfsServerAddress" .Values.nfsServerAddress }}
     nfsMountPoint: /nfs-shared
+    jfsMountPoint: /jfs
+    jfsPvcName: {{ .Values.juicefsPersistentVolumeClaimName }}
     jupyterStartTimeout: {{ .Values.jhubStartTimeout | quote }}
     startupScript: {{ .Values.jhubStartupScript | default "/envs/setup.sh" | quote }}
 

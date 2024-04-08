@@ -1,0 +1,68 @@
+{{ if .Values.juicefsEnabled }}
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: juicefs-secret
+type: Opaque
+stringData:
+  name: {{ .Values.juicefsFilesystemName | default "jfs" }}
+  metaurl: {{ .Values.juicefsMetaUrl }} 
+  storage: s3
+  bucket: {{ .Values.juicefsBucket }}
+  access-key: {{ .Values.juicefsAccessKey }}
+  secret-key: {{ .Values.juicefsSecretKey }}
+
+---
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Values.juicefsPersistentVolumeName | default "juicefs-pv" }}
+  labels:
+    juicefs-name: {{ .Release.Name }}
+spec:
+  capacity:
+    storage: {{ .Values.juicefsStorage | default "256Gi" }}
+
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  csi:
+    # A CSIDriver named csi.juicefs.com is created during installation
+    driver: csi.juicefs.com
+    # volumeHandle needs to be unique within the cluster, simply using the PV name is recommended
+    volumeHandle: {{ .Values.juicefsPersistentVolumeName | default "juicefs-pv" }}
+    fsType: juicefs
+    # Reference the volume credentials (Secret) created in previous step
+    # If you need to use different credentials, or even use different JuiceFS volumes, you'll need to create different volume credentials
+    nodePublishSecretRef:
+      name: juicefs-secret
+      namespace: default
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.juicefsPersistentVolumeClaimName | default "juicefs" }}
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteMany
+  volumeMode: Filesystem
+  # Must use an empty string as storageClassName
+  # Meaning that this PV will not use any StorageClass, instead will use the PV specified by selector
+  storageClassName: ""
+  # For now, JuiceFS CSI Driver doesn't support setting storage capacity for static PV. Fill in any valid string that's lower than the PV capacity.
+  resources:
+    requests:
+      storage: "1Mi"   
+  selector:
+    matchLabels:
+      juicefs-name: {{ .Release.Name }}
+
+
+{{ end }}
+

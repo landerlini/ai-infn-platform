@@ -75,6 +75,46 @@ nfsMetricsMonitoringPaths:
 # nfsMetricsMonitoringSubPaths list paths for which monitoring each subdir separately
 nfsMetricsMonitoringSubPaths:
   - NFS
+  
+
+################################################################################
+## JuiceFS. https://juicefs.com/docs/csi/getting_started
+## -----------------------------------------------------
+
+# juicefsEnabled enables the JuiceFS configuration (default: True).
+# !!! WARNING !!!
+# If disabling juicefs, also remove jfs volume and volumeMouns from jupyterhub:
+#   jupyterhub.hub.extraVolumes
+#   jupyterhub.hub.extraVolumeMounts
+juicefsEnabled: True
+
+# juicefsMetaUrl is the url to the metadata backend (redis or PostgreSQL)
+juicefsMetaUrl: 
+
+# juicefsBucket is the url to the bucket where to store jfs data
+juicefsBucket: 
+
+# juicefsAccessKey is the access key of the object storage
+juicefsAccessKey: 
+
+# juicefsSecretKey is the secret key of the object storage
+juicefsSecretKey: 
+
+# juicefsPersistentVolumeName is the name of the pv created for JuiceFS
+juicefsPersistentVolumeName: juicefs-pv
+
+# juicefsPersistentVolumeClaimName is the name of the pvc to share JuiceFS
+# !!! WARNING !!!
+# If renaming the pvc, modify consistently the volume mounted in the hub
+#   jupyterhub.hub.extraVolumes
+juicefsPersistentVolumeClaimName: juicefs
+
+# juicefsStorage is the size of the allocated storage
+juicefsStorage: 256Gi
+
+
+
+
 
 ################################################################################
 ## Cern Virtual-Machine FileSystem (cvmfs)
@@ -444,13 +484,19 @@ jupyterhub:
           server: "10.43.0.2"
           path: "/"
 
+      - name: jfs
+        persistentVolumeClaim: 
+          claimName: juicefs
+
     extraVolumeMounts:
       - name: jhub-config
         mountPath: /usr/local/etc/jupyterhub/jupyterhub_config.d/
 
       - name: shared
         mountPath: /nfs-shared
- 
+
+      - name: jfs
+        mountPath: /jfs
 
     extraEnv:
       OAUTH_CALLBACK_URL: 
@@ -512,6 +558,19 @@ jupyterhub:
           configMapKeyRef:
             name: jhub-env
             key: nfsMountPoint
+
+      JFS_MOUNT_POINT:
+        valueFrom:
+          configMapKeyRef:
+            name: jhub-env
+            key: jfsMountPoint
+
+      JFS_PVC_NAME:
+        valueFrom:
+          configMapKeyRef:
+            name: jhub-env
+            key: jfsPvcName
+
 
       START_TIMEOUT:
         valueFrom: 
