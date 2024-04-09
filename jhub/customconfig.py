@@ -467,19 +467,20 @@ class InfnSpawner(KubeSpawner):
         mountPath=path,
     )
 
-    def jfs_volume(self, name):
-      if not os.path.exists(JFS_MOUNT_POINT/name):
-        os.mkdir(JFS_MOUNT_POINT/name)
+    def jfs_volume(self):
       return dict(
-        name=name, 
+        name=JFS_PVC_NAME, 
         persistentVolumeClaim=dict(
           claimName=JFS_PVC_NAME,
         )
       )  
 
     def jfs_mount(self, name, path, protected=False):
+      if not os.path.exists(JFS_MOUNT_POINT/name):
+        os.mkdir(JFS_MOUNT_POINT/name)
+
       return dict(
-        name=name, 
+        name=JFS_PVC_NAME, 
         mountPath=path,
         subPath=name,
     )
@@ -500,7 +501,7 @@ class InfnSpawner(KubeSpawner):
           ]
 
         if self.check_priviledge('juicefs'):
-          volumes.append (self.jfs_volume(f'jfs-user-{username}'))
+          volumes.append (self.jfs_volume())
 
         for volume in SYSTEM_VOLUMES:
           if self.check_priviledge(volume):
@@ -531,7 +532,7 @@ class InfnSpawner(KubeSpawner):
           ]
 
         if self.check_priviledge('juicefs'):
-          volumes.append(self.jfs_mount(f"jfs-user-{username}", "/home/jfs"))
+          volumes.append(self.jfs_mount(f"jfs-user-{username}", "/home/jfs/private"))
 
         for volume in SYSTEM_VOLUMES:
           if self.check_priviledge(volume):
@@ -539,6 +540,8 @@ class InfnSpawner(KubeSpawner):
 
         for group in self.get_user_groups():
           volumes += [{"name": f"shared-{group}", "mountPath": f"/{HOME_NAME}/shared/{group}", "readOnly": False}]
+          if self.check_priviledge('juicefs'):
+            volumes.append(self.jfs_mount(f"jfs-shared-{group}", f"/home/jfs/shared/{group}"))
 
         volumes.append(dict(
             name='public-cvmfs',
