@@ -88,9 +88,6 @@ nfsMetricsMonitoringSubPaths:
 #   jupyterhub.hub.extraVolumeMounts
 juicefsEnabled: True
 
-# juicefsMetaUrl is the url to the metadata backend (redis or PostgreSQL)
-juicefsMetaUrl: 
-
 # juicefsBucket is the url to the bucket where to store jfs data
 juicefsBucket: 
 
@@ -112,9 +109,19 @@ juicefsPersistentVolumeClaimName: juicefs
 # juicefsStorage is the size of the allocated storage
 juicefsStorage: 256Gi
 
+# juicefsMetaNamespace is the namespace where redis (or the meta engine) is installed
+juicefsMetaNamespace: juicefs-meta
 
+# juicefsMetaAuthToken is the token for accessing Redis
+juicefsMetaAuthToken: 
 
+# juicefsMetaPort is the NodePort to access redis from remote nodes
+juicefsMetaPort: 30379
 
+# juicefsMetaTrustedIPs is the list of IPs from which Redis accepts connections 
+juicefsMetaTrustedCIDRs: 
+ - 131.154.99.38/32  # Cloud@CNAF
+  
 
 ################################################################################
 ## Cern Virtual-Machine FileSystem (cvmfs)
