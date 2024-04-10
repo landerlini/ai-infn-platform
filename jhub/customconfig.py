@@ -47,6 +47,8 @@ IAM_CLIENT_SECRET = os.environ["IAM_CLIENT_SECRET"]
 START_TIMEOUT = int(os.environ.get("START_TIMEOUT", 20))
 NFS_MOUNT_POINT = Path(os.environ.get("NFS_MOUNT_POINT", "/nfs-shared"))
 NFS_SERVER_ADDRESS = os.environ.get("NFS_SERVER_ADDRESS")
+JFS_MOUNT_POINT = Path(os.environ.get("JFS_MOUNT_POINT", "/jfs"))
+JFS_PVC_NAME = os.environ.get("JFS_PVC_NAME", "juicefs")
 STARTUP_SCRIPT = Path(os.environ.get("STARTUP_SCRIPT", "/envs/setup.sh"))
 DEBUG = os.environ.get("DEBUG", "").lower() in ["true", "yes", "y"]
 HOME_NAME = os.environ.get("HOME_NAME", "home")
@@ -475,6 +477,24 @@ class InfnSpawner(KubeSpawner):
         name=name, 
         mountPath=path,
     )
+
+    def jfs_volume(self):
+      return dict(
+        name=JFS_PVC_NAME, 
+        persistentVolumeClaim=dict(
+          claimName=JFS_PVC_NAME,
+        )
+      )  
+
+    def jfs_mount(self, name, path, protected=False):
+      if not os.path.exists(JFS_MOUNT_POINT/name):
+        os.mkdir(JFS_MOUNT_POINT/name)
+
+      return dict(
+        name=JFS_PVC_NAME, 
+        mountPath=path,
+        subPath=name,
+    )
       
     @property 
     def volumes(self):
@@ -490,6 +510,9 @@ class InfnSpawner(KubeSpawner):
           self.nfs_volume(f'public'),
           self.nfs_volume(f'envs'),
           ]
+
+        if self.check_priviledge('juicefs'):
+          volumes.append (self.jfs_volume())
 
         for volume in SYSTEM_VOLUMES:
           if self.check_priviledge(volume):
@@ -511,6 +534,7 @@ class InfnSpawner(KubeSpawner):
       volumes = [
         {"name": "secret-mask", "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount", "readOnly": True},
       ]
+
       if NFS_SERVER_ADDRESS is not None:
         volumes += [
           {"name": f"user-{username}", "mountPath": f"/{HOME_NAME}/private"},
@@ -518,12 +542,17 @@ class InfnSpawner(KubeSpawner):
           {"name": "envs", "mountPath": "/envs", "readOnly": not self.check_priviledge("envs")},
           ]
 
+        if self.check_priviledge('juicefs'):
+          volumes.append(self.jfs_mount(f"jfs-user-{username}", "/home/jfs/private"))
+
         for volume in SYSTEM_VOLUMES:
           if self.check_priviledge(volume):
             volumes += [{"name": volume, "mountPath": f"/{HOME_NAME}/system/{volume}"}]
 
         for group in self.get_user_groups():
           volumes += [{"name": f"shared-{group}", "mountPath": f"/{HOME_NAME}/shared/{group}", "readOnly": False}]
+          if self.check_priviledge('juicefs'):
+            volumes.append(self.jfs_mount(f"jfs-shared-{group}", f"/home/jfs/shared/{group}"))
 
         volumes.append(dict(
             name='public-cvmfs',

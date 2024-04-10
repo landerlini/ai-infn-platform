@@ -1,0 +1,125 @@
+{{ if .Values.juicefsEnabled }}
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.juicefsMetaNamespace }}
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: {{ .Values.juicefsMetaNamespace }}
+data:
+  redis-config: |
+    requirepass {{ .Values.juicefsMetaAuthToken }}
+    
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: {{ .Values.juicefsMetaNamespace }}
+  labels:
+    app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+  template:
+    metadata:
+      name: redis
+      namespace: {{ .Values.juicefsMetaNamespace }}
+      labels:
+        app.kubernetes.io/name: redis
+        component: redis
+
+    spec:
+      containers:
+      - name: redis
+        image: {{ .Values.redisImage | default "redis:latest" }}
+        command:
+          - redis-server
+          - "/redis-master/redis.conf"
+        env:
+        - name: MASTER
+          value: "true"
+        ports:
+        - containerPort: 6379
+        resources:
+          requests:
+            cpu: "500m"
+            memory: 512Mi
+          limits:
+            cpu: "2"
+            memory: 2Gi
+
+        volumeMounts:
+        - mountPath: /redis-master-data
+          name: data
+        - mountPath: /redis-master
+          name: config
+      volumes:
+        - name: data
+          hostPath:
+            path: /user-data/redis
+            type: DirectoryOrCreate 
+        - name: config
+          configMap:
+            name: redis-config
+            items:
+            - key: redis-config
+              path: redis.conf
+
+      nodeSelector:
+        storage: nfsexport
+
+--- 
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: juicefs-firewall
+  namespace: {{ .Values.juicefsMetaNamespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+
+  policyTypes:
+  - Ingress
+
+  ingress:
+  - from:
+    - ipBlock:
+        cidr: 10.0.0.0/8
+    {{ range .Values.juicefsMetaTrustedCIDRs }}
+    - ipBlock:
+        cidr: {{ . }}
+    {{ end }}
+    ports:
+    - protocol: TCP
+      port: 6379
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: jfs-redis
+  namespace: {{ .Values.juicefsMetaNamespace }}
+
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+      nodePort: {{ .Values.juicefsMetaPort | default 30379 }} 
+    
+{{ end }}
