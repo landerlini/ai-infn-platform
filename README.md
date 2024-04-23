@@ -30,3 +30,11 @@ jupyterhub:
     cookieSecret: # Generate and copy here a deployment-unique token: `openssl rand -hex 32`
 ```
 
+## Copyright and Licence
+(c) Copyright 2024. Istituto Nazionale di Fisica Nucleare.
+                                                                            
+This software is distributed under the terms of the GNU General Public Licence version 3 (GPL Version 3), copied verbatim in the file "LICENCE".
+                                                                            
+We acknowledge the support of the ICSC Foundation to the development of the AI_INFN Platform.
+
+![image](https://user-images.githubusercontent.com/44908794/227858127-47d2b66f-4f1b-4f34-b505-814748957123.png)
