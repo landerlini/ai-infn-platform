@@ -33,7 +33,7 @@ jupyterhub:
 ## Copyright and Licence
 (c) Copyright 2024. Istituto Nazionale di Fisica Nucleare.
                                                                             
-This software is distributed under the terms of the GNU General Public Licence version 3 (GPL Version 3), copied verbatim in the file "LICENCE".
+This software is distributed under the terms of the GNU Affero General Public Licence version 3 (AGPL Version 3), copied verbatim in the file "LICENCE".
                                                                             
 We acknowledge the support of the ICSC Foundation to the development of the AI_INFN Platform.
 
