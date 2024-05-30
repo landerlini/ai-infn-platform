@@ -13,8 +13,6 @@ data:
     jupyterhubCryptKey: {{ required "Missing jhubCryptKey" .Values.jhubCryptKey }} 
     nfsServerAddress:  {{ required "Missing nfsServerAddress" .Values.nfsServerAddress }}
     nfsMountPoint: /nfs-shared
-    jfsMountPoint: /jfs
-    jfsPvcName: {{ .Values.juicefsPersistentVolumeClaimName }}
     jupyterStartTimeout: {{ .Values.jhubStartTimeout | quote }}
     startupScript: {{ .Values.jhubStartupScript | default "/envs/setup.sh" | quote }}
 
@@ -48,4 +46,14 @@ data:
     vkdNamespace: {{ .Values.vkdNamespace | default "vkd" }}
 
     metricsApiKey:  {{ required "Missing jhubMetricApiKey in values.yaml" .Values.jhubMetricApiKey }}
+
+
+    {{ if .Values.juicefsEnabled }}
+    enableJfs: "true"
+    {{ else }}
+    enableJfs: "false"
+    {{ end }}
+
+    jfsMountPoint: /jfs
+    jfsPvcName: {{ .Values.juicefsPersistentVolumeClaimName }}
 
