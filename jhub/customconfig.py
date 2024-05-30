@@ -47,8 +47,15 @@ IAM_CLIENT_SECRET = os.environ["IAM_CLIENT_SECRET"]
 START_TIMEOUT = int(os.environ.get("START_TIMEOUT", 20))
 NFS_MOUNT_POINT = Path(os.environ.get("NFS_MOUNT_POINT", "/nfs-shared"))
 NFS_SERVER_ADDRESS = os.environ.get("NFS_SERVER_ADDRESS")
-JFS_MOUNT_POINT = Path(os.environ.get("JFS_MOUNT_POINT", "/jfs"))
-JFS_PVC_NAME = os.environ.get("JFS_PVC_NAME", "juicefs")
+JUICEFS_ENABLED = os.environ.get("JUICEFS_ENABLED") in ["true", "yes", "y"]
+JUICEFS_MOUNT_POINT = Path(os.environ.get("JUICEFS_MOUNT_POINT", "/jfs"))
+JUICEFS_PVC_NAME = os.environ.get("JUICEFS_PVC_NAME", "juicefs")
+JUICEFS_S3_BUCKET = os.environ.get("JUICEFS_S3_BUCKET", "")
+JUICEFS_S3_ACCESS_KEY = os.environ.get("JUICEFS_S3_ACCESS_KEY", "")
+JUICEFS_S3_SECRET_KEY = os.environ.get("JUICEFS_S3_SECRET_KEY", "")
+JUICEFS_METADATA_DB = os.environ.get("JUICEFS_METADATA_DB", "")
+JUICEFS_FILESYSTEM_NAME = os.environ.get("JUICEFS_FILESYSTEM_NAME", "")
+
 STARTUP_SCRIPT = Path(os.environ.get("STARTUP_SCRIPT", "/envs/setup.sh"))
 DEBUG = os.environ.get("DEBUG", "").lower() in ["true", "yes", "y"]
 HOME_NAME = os.environ.get("HOME_NAME", "home")
@@ -480,18 +487,18 @@ class InfnSpawner(KubeSpawner):
 
     def jfs_volume(self):
       return dict(
-        name=JFS_PVC_NAME, 
+        name=JUICEFS_PVC_NAME, 
         persistentVolumeClaim=dict(
-          claimName=JFS_PVC_NAME,
+          claimName=JUICEFS_PVC_NAME,
         )
       )  
 
     def jfs_mount(self, name, path, protected=False):
-      if not os.path.exists(JFS_MOUNT_POINT/name):
-        os.mkdir(JFS_MOUNT_POINT/name)
+      if not os.path.exists(JUICEFS_MOUNT_POINT/name):
+        os.mkdir(JUICEFS_MOUNT_POINT/name)
 
       return dict(
-        name=JFS_PVC_NAME, 
+        name=JUICEFS_PVC_NAME, 
         mountPath=path,
         subPath=name,
     )
@@ -546,7 +553,7 @@ class InfnSpawner(KubeSpawner):
           {"name": "envs", "mountPath": "/envs", "readOnly": not self.check_priviledge("envs")},
           ]
 
-        if self.check_priviledge('juicefs'):
+        if JUICEFS_ENABLED and self.check_priviledge('juicefs'):
           volumes.append(self.jfs_mount(f"jfs-user-{username}", "/home/jfs/private"))
 
         for volume in SYSTEM_VOLUMES:
@@ -555,7 +562,7 @@ class InfnSpawner(KubeSpawner):
 
         for group in self.get_user_groups():
           volumes += [{"name": f"shared-{group}", "mountPath": f"/{HOME_NAME}/shared/{group}", "readOnly": False}]
-          if self.check_priviledge('juicefs'):
+          if JUICEFS_ENABLED and self.check_priviledge('juicefs'):
             volumes.append(self.jfs_mount(f"jfs-shared-{group}", f"/home/jfs/shared/{group}"))
 
         volumes.append(dict(
@@ -625,6 +632,17 @@ class InfnSpawner(KubeSpawner):
         ORIGIN_NAMESPACE=JHUB_NAMESPACE,
         MAXIMUM_FOLDER_SIZE_GB=VKD_MINIO_MAXIMUM_FOLDER_SIZE_GB,
         )
+
+      if JUICEFS_ENABLED and self.check_priviledge('juicefs'):
+        environment.update(
+            dict(
+              JUICEFS_S3_BUCKET=JUICEFS_S3_BUCKET,
+              JUICEFS_S3_ACCESS_KEY=JUICEFS_S3_ACCESS_KEY,
+              JUICEFS_S3_SECRET_KEY=JUICEFS_S3_SECRET_KEY,
+              JUICEFS_METADATA_DB=JUICEFS_METADATA_DB,
+              JUICEFS_FILESYSTEM_NAME=JUICEFS_FILESYSTEM_NAME,
+              )
+          )
 
       secrets=dict(
           MINIO_USER={'secretKeyRef': {"name": "minio-admin", "key": "minio-admin-user"}},

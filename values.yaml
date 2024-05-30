@@ -367,8 +367,11 @@ jhubIamServer: https://iam.cloud.infn.it/
 jhubAllowedIamGroups:
   - users/ai-infn
   - ml-infn-platform
+  - ml-infn-users
+
 
 jhubAdminIamGroups:
+  - ml-infn
   - admins/ai-infn
 
 jhubIamClientId: 
@@ -566,18 +569,53 @@ jupyterhub:
             name: jhub-env
             key: nfsMountPoint
 
-      JFS_MOUNT_POINT:
+      JUICEFS_ENABLED:
+        valueFrom:
+          configMapKeyRef:
+            name: jhub-env
+            key: enableJfs
+
+      JUICEFS_MOUNT_POINT:
         valueFrom:
           configMapKeyRef:
             name: jhub-env
             key: jfsMountPoint
 
-      JFS_PVC_NAME:
+      JUICEFS_PVC_NAME:
         valueFrom:
           configMapKeyRef:
             name: jhub-env
             key: jfsPvcName
 
+      JUICEFS_S3_BUCKET:
+        valueFrom:
+          secretKeyRef:
+            name: juicefs-secret
+            key: bucket
+
+      JUICEFS_S3_ACCESS_KEY:
+        valueFrom:
+          secretKeyRef:
+            name: juicefs-secret
+            key: access-key
+
+      JUICEFS_S3_SECRET_KEY:
+        valueFrom:
+          secretKeyRef:
+            name: juicefs-secret
+            key: secret-key
+
+      JUICEFS_METADATA_DB: 
+        valueFrom:
+          secretKeyRef:
+            name: juicefs-secret
+            key: metaurl
+
+      JUICEFS_FILESYSTEM_NAME: 
+        valueFrom:
+          secretKeyRef:
+            name: juicefs-secret
+            key: name
 
       START_TIMEOUT:
         valueFrom: 
@@ -687,6 +725,7 @@ jupyterhub:
             name: jhub-env
             key: vkdImageBranch
 
+    
 
 
 
