@@ -281,7 +281,7 @@ vkdPort: 8000
 vkdMinioUrl: minio-singleuser:9000
 
 # vkdImageBranch is the branch of the github repository the docker image downloads for CD
-vkdImageBranch: newdm  #TODO put this back to "main"
+vkdImageBranch: jfs  #TODO put this back to "main"
 
 # vkdMinioServerTolerations is the hostPath location used to store S3 data
 # with snapshots of the filesystem to be used in batch jobs
@@ -313,6 +313,15 @@ vkdPriorityClasses:
     description: |
       Fire priority can kill other jobs to get resources. 
       Can waste CPU resources. Should be used upon authorization.
+     
+
+################################################################################
+## Offloading with interlink
+#
+
+# interlinkEnabled create the kueue resources to enable offloading to vk
+interlinkEnabled: true
+
 
 
 
@@ -365,9 +374,9 @@ dashboardServiceAccount: "dashboard-reader"
 
 jhubIamServer: https://iam.cloud.infn.it/
 jhubAllowedIamGroups:
- - ml-infn-platform
- - ml-infn-users
- - users/ai-infn
+  - users/ai-infn
+  - ml-infn-platform
+  - ml-infn-users
 
 jhubAdminIamGroups:
   - ml-infn

@@ -460,11 +460,11 @@ class InfnSpawner(KubeSpawner):
           logging.warning("NFS_SERVER_ADDRESS not set. Will not mount network drivers.")
 
 
-    def empty_volume(self, name):
+    def empty_volume(self, name, size_limit='1M'):
       return dict(
         name=name, 
         emptyDir=dict(
-          sizeLimit="1M",
+          sizeLimit=size_limit,
         )
       )  
 
@@ -508,7 +508,9 @@ class InfnSpawner(KubeSpawner):
       username = self.get_user_name()
 
       volumes = [
-        self.empty_volume('secret-mask'),
+        self.empty_volume('secret-mask', size_limit='1M'),
+        self.empty_volume('shared-memory', size_limit='32Gi'),
+        self.empty_volume('tmp', size_limit='100Gi'),
       ]
 
       if NFS_SERVER_ADDRESS is not None:
@@ -540,6 +542,8 @@ class InfnSpawner(KubeSpawner):
       username = self.get_user_name()
       volumes = [
         {"name": "secret-mask", "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount", "readOnly": True},
+        {"name": "shared-memory", "mountPath": "/dev/shm", "readOnly": False},
+        {"name": "tmp", "mountPath": "/tmp", "readOnly": False},
       ]
 
       if NFS_SERVER_ADDRESS is not None:
