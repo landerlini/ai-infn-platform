@@ -1,4 +1,4 @@
-# Image name: harbor.cloud.infn.it/testbed-dm/ai-infn:0.2.1
+# Image name: harbor.cloud.infn.it/testbed-dm/ai-infn:0.3
 FROM jupyter/minimal-notebook:latest
 
 USER root
@@ -55,7 +55,7 @@ RUN python3 -m pip install jupyter-server-proxy \
 
 # Install sts-wire
 RUN mkdir -p /usr/local/share/dodasts/bin/ && \
-    curl -L https://github.com/DODAS-TS/sts-wire/releases/download/v2.1.2/sts-wire_linux -o /usr/local/share/dodasts/bin/sts-wire && \
+    curl -L https://github.com/DODAS-TS/sts-wire/releases/download/v2.1.4-rados/sts-wire_linux -o /usr/local/share/dodasts/bin/sts-wire && \
     chmod +x /usr/local/share/dodasts/bin/sts-wire && \
     ln -s /usr/local/share/dodasts/bin/sts-wire /usr/local/bin/sts-wire
 

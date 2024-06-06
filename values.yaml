@@ -378,7 +378,6 @@ jhubAllowedIamGroups:
   - ml-infn-platform
   - ml-infn-users
 
-
 jhubAdminIamGroups:
   - ml-infn
   - admins/ai-infn
@@ -399,7 +398,7 @@ rbac:
 jhubHomeDirectoryName: home
 jhubSplashMessage: Welcome to the AI_INFN Platform!
 jhubLabImages: 
-  AI_INFN Multi-environment setup: harbor.cloud.infn.it/testbed-dm/ai-infn:0.2.1
+  AI_INFN Multi-environment setup: harbor.cloud.infn.it/testbed-dm/ai-infn:0.3-pre1-rgw
 
 
 # jhubExtResAllocExporterEnabled enables a custom prometheus exporter for gpu allocation
@@ -463,7 +462,7 @@ jupyterhub:
   hub:
     image:
       name: quay.io/jupyterhub/k8s-hub
-      tag: '3.2.1'
+      tag: '3.3.7'
 
     cookieSecret: #<PUT HERE A RANDOM TOKEN openssl rand -hex 32>
 
