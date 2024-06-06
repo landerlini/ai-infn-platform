@@ -313,6 +313,15 @@ vkdPriorityClasses:
     description: |
       Fire priority can kill other jobs to get resources. 
       Can waste CPU resources. Should be used upon authorization.
+     
+
+################################################################################
+## Offloading with interlink
+#
+
+# interlinkEnabled create the kueue resources to enable offloading to vk
+interlinkEnabled: true
+
 
 
 
