@@ -389,6 +389,10 @@ class InfnSpawner(KubeSpawner):
             for g in self.get_user_groups()
         ]
 
+        self.extra_pod_config.update ({
+                "runtimeClassName": "nvidia",
+            })
+
         logging.info("Affinity - preferred")
         logging.info(self.node_affinity_preferred)
         return options
