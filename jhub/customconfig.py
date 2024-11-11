@@ -384,14 +384,14 @@ class InfnSpawner(KubeSpawner):
               )
           ]
 
+          self.extra_pod_config.update ({
+                  "runtimeClassName": "nvidia",
+              })
+
         self.tolerations += [
             {"key": "reserved", "operator": "Equal", "value": g, "effect": "NoSchedule"}
             for g in self.get_user_groups()
         ]
-
-        self.extra_pod_config.update ({
-                "runtimeClassName": "nvidia",
-            })
 
         logging.info("Affinity - preferred")
         logging.info(self.node_affinity_preferred)
