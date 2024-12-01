@@ -1,87 +1,38 @@
-# Image name: harbor.cloud.infn.it/testbed-dm/ai-infn:0.2.1
-FROM jupyter/minimal-notebook:latest
+# Image name: harbor.cloud.infn.it/testbed-dm/ai-infn:v4.0.5
+FROM docker.io/jgvino/jupyterhub-jlab:v2
 
-USER root
-
-## Libraries
-RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -qy \
-      vim less nano \
-      linux-headers-generic gcc g++ make \
-      libffi-dev \
-      git \
-      bash \
-      tini \
-      python3.10 \
-      unzip \
-      htop \
-      subversion \
-      graphviz \
-      libgl1 \
-      build-essential \
-      libargon2-0-dev \
-      libffi-dev \
-      libpixman-1-dev \
-      libcairo2-dev \
-      libjpeg-dev \
-      libczmq-dev \
-      pandoc \
-      texlive-xetex \
-      texlive-fonts-recommended \
-      texlive-base \
-      snakemake \
-      screen \
-      openssh-client \
-      fuse \
-      rsync \
-      ssh && \
-    DEBIAN_FRONTEND=noninteractive apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-
-RUN pip install --no-cache-dir \
-  numpy pandas matplotlib h5py \
-  dask-labextension 
-
-RUN mkdir /usr/bin/pip && mkdir /usr/bin/pip3 && mkdir /usr/bin/pip3.8
-
-
-
-# Install vscode
-RUN curl -fsSL https://code-server.dev/install.sh | sh
-RUN python3 -m pip install jupyter-server-proxy \
-    git+https://github.com/landerlini/jupyter_codeserver_proxy.git \
-    jupyter-resource-usage 
-
-# Install sts-wire
-RUN mkdir -p /usr/local/share/dodasts/bin/ && \
-    curl -L https://github.com/DODAS-TS/sts-wire/releases/download/v2.1.2/sts-wire_linux -o /usr/local/share/dodasts/bin/sts-wire && \
-    chmod +x /usr/local/share/dodasts/bin/sts-wire && \
-    ln -s /usr/local/share/dodasts/bin/sts-wire /usr/local/bin/sts-wire
-
-# RUN pip install git+https://github.com/landerlini/vkd-client.git --force-reinstall 
-
-# Install apptainer
+# Install apptainer, cvmfs and openssh-server
 RUN apt update && \
-    apt install -y software-properties-common && \
+    apt-get install -y gnupg2 && \
+    apt install -y lsb-release wget software-properties-common && \
+    wget https://ecsft.cern.ch/dist/cvmfs/cvmfs-release/cvmfs-release-latest_all.deb && \
+    dpkg -i cvmfs-release-latest_all.deb && \
     add-apt-repository -y ppa:apptainer/ppa && \
     apt update  && \
-    apt install -y apptainer
+    apt install -y \
+      apptainer \
+      cvmfs \
+      cvmfs-fuse3 \
+      cvmfs-libs \
+      openssh-server \
+      libgl1-mesa-glx \
+      xvfb \
+    && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* cvmfs-release-latest_all.deb 
+
+# Install customized JuiceFS client
+RUN wget -O /usr/bin/juicefs https://pandora.infn.it/public/3423df/dl/juicefs && \
+    chmod a+rx /usr/bin/juicefs
 
 # Changes the home directory of the user to private
 RUN sed -i 's/:\/root:/:\/home\/private:/g' /etc/passwd
 
-# Configure the sshd service
-RUN echo "PermitRootLogin yes"                        >> /etc/ssh/sshd_config.d/aiinfn.conf && \
-    echo "StrictModes no"                             >> /etc/ssh/sshd_config.d/aiinfn.conf && \
-    echo "AuthorizedKeysFile %h/.ssh/authorized_keys" >> /etc/ssh/sshd_config.d/aiinfn.conf && \
-    echo "PasswordAuthentication no"                  >> /etc/ssh/sshd_config.d/aiinfn.conf && \
-    echo "X11Forwarding no"                           >> /etc/ssh/sshd_config.d/aiinfn.conf && \
-    echo "KbdInteractiveAuthentication no"            >> /etc/ssh/sshd_config.d/aiinfn.conf && \
-    echo "PubkeyAuthentication yes"                   >> /etc/ssh/sshd_config.d/aiinfn.conf 
+# Import configuration of sshd
+COPY ./sshd.conf /etc/ssh/sshd_config.d/aiinfn.conf 
 
-WORKDIR /home
-
+# Clean home of default jupyter user
 RUN rm -rf /home/jovyan
 
+WORKDIR /home
+ENTRYPOINT []
 
