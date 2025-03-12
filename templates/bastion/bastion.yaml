@@ -78,7 +78,7 @@ spec:
       volumes:
         - name: jupyterhome
           nfs:
-            server: {{ .Values.nfsServerAddress }}
+            server: {{ .Values.nfsServerAddressExternal | default .Values.nfsServerAddress }}
             path: "/"
 ---
 apiVersion: v1

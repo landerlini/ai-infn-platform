@@ -1,4 +1,4 @@
-# Image name: harbor.cloud.infn.it/testbed-dm/ai-infn:0.3
+# Image name: harbor.cloud.infn.it/testbed-dm/ai-infn:padova
 FROM jupyter/minimal-notebook:latest
 
 USER root
@@ -47,17 +47,17 @@ RUN mkdir /usr/bin/pip && mkdir /usr/bin/pip3 && mkdir /usr/bin/pip3.8
 
 
 
-# Install vscode
-RUN curl -fsSL https://code-server.dev/install.sh | sh
-RUN python3 -m pip install jupyter-server-proxy \
-    git+https://github.com/landerlini/jupyter_codeserver_proxy.git \
-    jupyter-resource-usage 
+## Install vscode
+# RUN curl -fsSL https://code-server.dev/install.sh | sh
+# RUN python3 -m pip install jupyter-server-proxy \
+#     git+https://github.com/landerlini/jupyter_codeserver_proxy.git \
+#     jupyter-resource-usage 
 
-# Install sts-wire
-RUN mkdir -p /usr/local/share/dodasts/bin/ && \
-    curl -L https://github.com/DODAS-TS/sts-wire/releases/download/v2.1.4-rados/sts-wire_linux -o /usr/local/share/dodasts/bin/sts-wire && \
-    chmod +x /usr/local/share/dodasts/bin/sts-wire && \
-    ln -s /usr/local/share/dodasts/bin/sts-wire /usr/local/bin/sts-wire
+## Install sts-wire
+# RUN mkdir -p /usr/local/share/dodasts/bin/ && \
+#     curl -L https://github.com/DODAS-TS/sts-wire/releases/download/v2.1.4-rados/sts-wire_linux -o /usr/local/share/dodasts/bin/sts-wire && \
+#     chmod +x /usr/local/share/dodasts/bin/sts-wire && \
+#     ln -s /usr/local/share/dodasts/bin/sts-wire /usr/local/bin/sts-wire
 
 # RUN pip install git+https://github.com/landerlini/vkd-client.git --force-reinstall 
 
@@ -79,6 +79,22 @@ RUN echo "PermitRootLogin yes"                        >> /etc/ssh/sshd_config.d/
     echo "X11Forwarding no"                           >> /etc/ssh/sshd_config.d/aiinfn.conf && \
     echo "KbdInteractiveAuthentication no"            >> /etc/ssh/sshd_config.d/aiinfn.conf && \
     echo "PubkeyAuthentication yes"                   >> /etc/ssh/sshd_config.d/aiinfn.conf 
+
+RUN cd /usr/local/bin && \
+    wget https://pandora.infn.it/public/3423df/dl/juicefs && \
+    chmod a+r ./juicefs && \
+    chmod a+x ./juicefs && \
+    cd -
+
+RUN apt-get install -y lsb-release wget && \
+    wget https://ecsft.cern.ch/dist/cvmfs/cvmfs-release/cvmfs-release-latest_all.deb && \
+    dpkg -i cvmfs-release-latest_all.deb && \
+    rm -f cvmfs-release-latest_all.deb && \
+    apt-get update && \
+    apt-get install -y cvmfs cvmfs-fuse3 cvmfs-libs 
+
+## Graphic libraries for data visualization (pyvista)
+RUN apt-get install -y libgl1-mesa-glx xvfb
 
 WORKDIR /home
 

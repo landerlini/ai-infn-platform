@@ -11,7 +11,7 @@ data:
     oauthIamClientId: {{ required "Missing IAM server config (jhubIamClientId)" .Values.jhubIamClientId }} 
     oauthIamClientSecret: {{ required "Missing IAM server config (jhubIamClientSecret)" .Values.jhubIamClientSecret }} 
     jupyterhubCryptKey: {{ required "Missing jhubCryptKey" .Values.jhubCryptKey }} 
-    nfsServerAddress:  {{ required "Missing nfsServerAddress" .Values.nfsServerAddress }}
+    nfsServerAddress:  {{ .Values.nfsServerAddressExternal | default .Values.nfsServerAddress }}
     nfsMountPoint: /nfs-shared
     jupyterStartTimeout: {{ .Values.jhubStartTimeout | quote }}
     startupScript: {{ .Values.jhubStartupScript | default "/envs/setup.sh" | quote }}

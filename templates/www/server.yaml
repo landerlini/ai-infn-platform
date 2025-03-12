@@ -60,7 +60,7 @@ spec:
       volumes:
         - name: website
           nfs:
-            server: {{ .Values.nfsServerAddress }}
+            server: {{ .Values.nfsServerAddressExternal | default .Values.nfsServerAddress }}
             path: {{ .Values.wwwPathToStaticWebsite }} 
 {{ end }}
 

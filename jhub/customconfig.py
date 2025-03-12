@@ -274,6 +274,17 @@ class InfnSpawner(KubeSpawner):
 
       return False
 
+    @staticmethod
+    def is_node_virtual(node, groups):
+      if node.spec.taints is None:
+        return False
+
+      for taint in node.spec.taints:
+        if taint.key == 'virtual-node.interlink/no-schedule':
+            return True
+
+      return False
+
 
     @staticmethod
     async def get_accelerators(
@@ -302,7 +313,7 @@ class InfnSpawner(KubeSpawner):
 
       if status_key in ['allocatable', 'capacity']:
         for node in nodes.items:
-          if InfnSpawner.is_node_reserved(node, groups):
+          if InfnSpawner.is_node_reserved(node, groups) or InfnSpawner.is_node_virtual(node, groups):
             continue
           accelerator = node.metadata.labels.get("nvidia.com/gpu.product", "none")
           if accelerator != "none":

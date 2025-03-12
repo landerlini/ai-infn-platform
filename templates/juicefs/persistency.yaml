@@ -7,7 +7,11 @@ metadata:
 type: Opaque
 stringData:
   name: {{ .Values.juicefsFilesystemName | default "jfs" }}
+  {{ if .Values.juicefsMetaUrl }}
+  metaurl: {{ .Values.juicefsMetaUrl }}
+  {{ else }}
   metaurl: "redis://:{{- .Values.juicefsMetaAuthToken -}}@{{- .Values.hostname -}}:{{- .Values.juicefsMetaPort }}"
+  {{ end }}
   storage: s3
   bucket: {{ .Values.juicefsBucket }}
   access-key: {{ .Values.juicefsAccessKey }}
