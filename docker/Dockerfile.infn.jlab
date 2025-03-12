@@ -1,0 +1,26 @@
+# Image name: harbor.cloud.infn.it/testbed-dm/ai-infn:v4.0.4
+FROM docker.io/jgvino/jupyterhub-jlab:v2
+
+# Install apptainer and openssh-server
+RUN apt update && \
+    apt-get install -y gnupg2 && \
+    apt install -y software-properties-common && \
+    add-apt-repository -y ppa:apptainer/ppa && \
+    apt update  && \
+    apt install -y apptainer openssh-server libgl1-mesa-glx xvfb && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Changes the home directory of the user to private
+RUN sed -i 's/:\/root:/:\/home\/private:/g' /etc/passwd
+
+# Install customized JuiceFS client
+RUN wget -O /usr/bin/juicefs https://pandora.infn.it/public/3423df/dl/juicefs && \
+    chmod a+rx /usr/bin/juicefs
+
+COPY ./sshd.conf /etc/ssh/sshd_config.d/aiinfn.conf 
+
+RUN rm -rf /home/jovyan
+
+WORKDIR /home
+ENTRYPOINT []
+

@@ -33,9 +33,13 @@ bastionAdminPublicKey:
 ## kubectl label nodes vnode-0.localdomain storage=nfsexport
 ## ```
 
+# nfsServerAddressExternal enables using an external NFS Server instead of deploying one
+# Important! If modified, the Helm Chart of JupyterHub must be kept in-sync.
+nfsServerAddressExternal: "192.168.1.80"
+
 # nfsServerAddress is the fixed-IP address of the NFS server (avoid DNS)
 # Important! If modified, the Helm Chart of JupyterHub must be kept in-sync.
-nfsServerAddress: "10.43.0.2"
+nfsServerAddress: null #"10.43.0.2"
 
 # nfsServerImage is the docker image of the NFS server
 nfsServerImage: k8s.gcr.io/volume-nfs:0.8
@@ -44,7 +48,7 @@ nfsServerImage: k8s.gcr.io/volume-nfs:0.8
 nfsServerInternalMountPath: /exports
 
 # nfsServerHostPath is the hostPath where the nfsServer store shared data
-nfsServerHostPath: /user-data
+nfsServerHostPath: /mnt/hub-warm
 
 # nfsServerNodeSelector is the nodeSelector used to attach the NFS server
 # to a node with dedicated storage resources.
@@ -202,10 +206,10 @@ acceleratorKnownModels:
 
   - name: Quadro-RTX-5000
     short_name: rtx5000
-    description: nVidia RTX5000 (32 GB)
+    description: nVidia RTX5000 (16 GB)
     node_selector:
       nvidia.com/gpu.product: Quadro-RTX-5000
-    memory_gb: 32
+    memory_gb: 16
     preference_weight: 7
     type: gpu
     extended_resource: nvidia.com/gpu
@@ -281,7 +285,7 @@ vkdPort: 8000
 vkdMinioUrl: minio-singleuser:9000
 
 # vkdImageBranch is the branch of the github repository the docker image downloads for CD
-vkdImageBranch: newdm  #TODO put this back to "main"
+vkdImageBranch: jfs  #TODO put this back to "main"
 
 # vkdMinioServerTolerations is the hostPath location used to store S3 data
 # with snapshots of the filesystem to be used in batch jobs
@@ -313,6 +317,15 @@ vkdPriorityClasses:
     description: |
       Fire priority can kill other jobs to get resources. 
       Can waste CPU resources. Should be used upon authorization.
+     
+
+################################################################################
+## Offloading with interlink
+#
+
+# interlinkEnabled create the kueue resources to enable offloading to vk
+interlinkEnabled: true
+
 
 
 
@@ -365,11 +378,13 @@ dashboardServiceAccount: "dashboard-reader"
 
 jhubIamServer: https://iam.cloud.infn.it/
 jhubAllowedIamGroups:
- - ml-infn-platform
- - ml-infn-users
+  - users/ai-infn
+  - ml-infn-platform
+  - ml-infn-users
 
 jhubAdminIamGroups:
   - ml-infn
+  - admins/ai-infn
 
 jhubIamClientId: 
 jhubIamClientSecret: 
@@ -387,8 +402,7 @@ rbac:
 jhubHomeDirectoryName: home
 jhubSplashMessage: Welcome to the AI_INFN Platform!
 jhubLabImages: 
-  AI_INFN Multi-environment setup: harbor.cloud.infn.it/testbed-dm/ai-infn:0.3-pre3
-
+  AI_INFN Multi-environment setup: harbor.cloud.infn.it/datacloud-templates/jlab-ai-infn:1.3.0-1-v1.3
 
 # jhubExtResAllocExporterEnabled enables a custom prometheus exporter for gpu allocation
 jhubExtResAllocExporterEnabled: true
@@ -451,7 +465,7 @@ jupyterhub:
   hub:
     image:
       name: quay.io/jupyterhub/k8s-hub
-      tag: '3.2.1'
+      tag: '3.3.7'
 
     cookieSecret: #<PUT HERE A RANDOM TOKEN openssl rand -hex 32>
 
@@ -488,7 +502,7 @@ jupyterhub:
 
       - name: shared
         nfs:
-          server: "10.43.0.2"
+          server: "192.168.1.80"
           path: "/"
 
       - name: jfs
@@ -566,18 +580,53 @@ jupyterhub:
             name: jhub-env
             key: nfsMountPoint
 
-      JFS_MOUNT_POINT:
+      JUICEFS_ENABLED:
+        valueFrom:
+          configMapKeyRef:
+            name: jhub-env
+            key: enableJfs
+
+      JUICEFS_MOUNT_POINT:
         valueFrom:
           configMapKeyRef:
             name: jhub-env
             key: jfsMountPoint
 
-      JFS_PVC_NAME:
+      JUICEFS_PVC_NAME:
         valueFrom:
           configMapKeyRef:
             name: jhub-env
             key: jfsPvcName
 
+      JUICEFS_S3_BUCKET:
+        valueFrom:
+          secretKeyRef:
+            name: juicefs-secret
+            key: bucket
+
+      JUICEFS_S3_ACCESS_KEY:
+        valueFrom:
+          secretKeyRef:
+            name: juicefs-secret
+            key: access-key
+
+      JUICEFS_S3_SECRET_KEY:
+        valueFrom:
+          secretKeyRef:
+            name: juicefs-secret
+            key: secret-key
+
+      JUICEFS_METADATA_DB: 
+        valueFrom:
+          secretKeyRef:
+            name: juicefs-secret
+            key: metaurl
+
+      JUICEFS_FILESYSTEM_NAME: 
+        valueFrom:
+          secretKeyRef:
+            name: juicefs-secret
+            key: name
 
       START_TIMEOUT:
         valueFrom: 
@@ -687,6 +736,7 @@ jupyterhub:
             name: jhub-env
             key: vkdImageBranch
 
+    
 
 
 

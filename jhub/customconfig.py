@@ -47,8 +47,15 @@ IAM_CLIENT_SECRET = os.environ["IAM_CLIENT_SECRET"]
 START_TIMEOUT = int(os.environ.get("START_TIMEOUT", 20))
 NFS_MOUNT_POINT = Path(os.environ.get("NFS_MOUNT_POINT", "/nfs-shared"))
 NFS_SERVER_ADDRESS = os.environ.get("NFS_SERVER_ADDRESS")
-JFS_MOUNT_POINT = Path(os.environ.get("JFS_MOUNT_POINT", "/jfs"))
-JFS_PVC_NAME = os.environ.get("JFS_PVC_NAME", "juicefs")
+JUICEFS_ENABLED = os.environ.get("JUICEFS_ENABLED") in ["true", "yes", "y"]
+JUICEFS_MOUNT_POINT = Path(os.environ.get("JUICEFS_MOUNT_POINT", "/jfs"))
+JUICEFS_PVC_NAME = os.environ.get("JUICEFS_PVC_NAME", "juicefs")
+JUICEFS_S3_BUCKET = os.environ.get("JUICEFS_S3_BUCKET", "")
+JUICEFS_S3_ACCESS_KEY = os.environ.get("JUICEFS_S3_ACCESS_KEY", "")
+JUICEFS_S3_SECRET_KEY = os.environ.get("JUICEFS_S3_SECRET_KEY", "")
+JUICEFS_METADATA_DB = os.environ.get("JUICEFS_METADATA_DB", "")
+JUICEFS_FILESYSTEM_NAME = os.environ.get("JUICEFS_FILESYSTEM_NAME", "")
+
 STARTUP_SCRIPT = Path(os.environ.get("STARTUP_SCRIPT", "/envs/setup.sh"))
 DEBUG = os.environ.get("DEBUG", "").lower() in ["true", "yes", "y"]
 HOME_NAME = os.environ.get("HOME_NAME", "home")
@@ -267,6 +274,17 @@ class InfnSpawner(KubeSpawner):
 
       return False
 
+    @staticmethod
+    def is_node_virtual(node, groups):
+      if node.spec.taints is None:
+        return False
+
+      for taint in node.spec.taints:
+        if taint.key == 'virtual-node.interlink/no-schedule':
+            return True
+
+      return False
+
 
     @staticmethod
     async def get_accelerators(
@@ -295,7 +313,7 @@ class InfnSpawner(KubeSpawner):
 
       if status_key in ['allocatable', 'capacity']:
         for node in nodes.items:
-          if InfnSpawner.is_node_reserved(node, groups):
+          if InfnSpawner.is_node_reserved(node, groups) or InfnSpawner.is_node_virtual(node, groups):
             continue
           accelerator = node.metadata.labels.get("nvidia.com/gpu.product", "none")
           if accelerator != "none":
@@ -424,6 +442,17 @@ class InfnSpawner(KubeSpawner):
       logging.info(f"{self.get_user_name()} { 'has' if result else 'has not' } permission '{op}'")
       return result
 
+    def get_group_allowance(self, resource):
+      str_allowances = [g.properties.get(resource) for g in self.user.groups if resource in g.properties.keys()] 
+      ret = []
+      for allowance in str_allowances:
+        try:
+          ret.append(int(allowance))
+        except ValueError:
+          logging.error(f"Failed allowance validation for {resource}: invalid value {allowance}.")
+
+      return sorted(list(set(ret)))
+
     #################################################################################
     #### VOLUMES
     #### -------
@@ -446,11 +475,11 @@ class InfnSpawner(KubeSpawner):
           logging.warning("NFS_SERVER_ADDRESS not set. Will not mount network drivers.")
 
 
-    def empty_volume(self, name):
+    def empty_volume(self, name, size_limit='1M'):
       return dict(
         name=name, 
         emptyDir=dict(
-          sizeLimit="1M",
+          sizeLimit=size_limit,
         )
       )  
 
@@ -473,18 +502,18 @@ class InfnSpawner(KubeSpawner):
 
     def jfs_volume(self):
       return dict(
-        name=JFS_PVC_NAME, 
+        name=JUICEFS_PVC_NAME, 
         persistentVolumeClaim=dict(
-          claimName=JFS_PVC_NAME,
+          claimName=JUICEFS_PVC_NAME,
         )
       )  
 
     def jfs_mount(self, name, path, protected=False):
-      if not os.path.exists(JFS_MOUNT_POINT/name):
-        os.mkdir(JFS_MOUNT_POINT/name)
+      if not os.path.exists(JUICEFS_MOUNT_POINT/name):
+        os.mkdir(JUICEFS_MOUNT_POINT/name)
 
       return dict(
-        name=JFS_PVC_NAME, 
+        name=JUICEFS_PVC_NAME, 
         mountPath=path,
         subPath=name,
     )
@@ -494,7 +523,9 @@ class InfnSpawner(KubeSpawner):
       username = self.get_user_name()
 
       volumes = [
-        self.empty_volume('secret-mask'),
+        self.empty_volume('secret-mask', size_limit='1M'),
+        self.empty_volume('shared-memory', size_limit='32Gi'),
+        self.empty_volume('tmp', size_limit='100Gi'),
       ]
 
       if NFS_SERVER_ADDRESS is not None:
@@ -526,6 +557,8 @@ class InfnSpawner(KubeSpawner):
       username = self.get_user_name()
       volumes = [
         {"name": "secret-mask", "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount", "readOnly": True},
+        {"name": "shared-memory", "mountPath": "/dev/shm", "readOnly": False},
+        {"name": "tmp", "mountPath": "/tmp", "readOnly": False},
       ]
 
       if NFS_SERVER_ADDRESS is not None:
@@ -535,7 +568,7 @@ class InfnSpawner(KubeSpawner):
           {"name": "envs", "mountPath": "/envs", "readOnly": not self.check_priviledge("envs")},
           ]
 
-        if self.check_priviledge('juicefs'):
+        if JUICEFS_ENABLED and self.check_priviledge('juicefs'):
           volumes.append(self.jfs_mount(f"jfs-user-{username}", "/home/jfs/private"))
 
         for volume in SYSTEM_VOLUMES:
@@ -544,7 +577,7 @@ class InfnSpawner(KubeSpawner):
 
         for group in self.get_user_groups():
           volumes += [{"name": f"shared-{group}", "mountPath": f"/{HOME_NAME}/shared/{group}", "readOnly": False}]
-          if self.check_priviledge('juicefs'):
+          if JUICEFS_ENABLED and self.check_priviledge('juicefs'):
             volumes.append(self.jfs_mount(f"jfs-shared-{group}", f"/home/jfs/shared/{group}"))
 
         volumes.append(dict(
@@ -614,6 +647,17 @@ class InfnSpawner(KubeSpawner):
         ORIGIN_NAMESPACE=JHUB_NAMESPACE,
         MAXIMUM_FOLDER_SIZE_GB=VKD_MINIO_MAXIMUM_FOLDER_SIZE_GB,
         )
+
+      if JUICEFS_ENABLED and self.check_priviledge('juicefs'):
+        environment.update(
+            dict(
+              JUICEFS_S3_BUCKET=JUICEFS_S3_BUCKET,
+              JUICEFS_S3_ACCESS_KEY=JUICEFS_S3_ACCESS_KEY,
+              JUICEFS_S3_SECRET_KEY=JUICEFS_S3_SECRET_KEY,
+              JUICEFS_METADATA_DB=JUICEFS_METADATA_DB,
+              JUICEFS_FILESYSTEM_NAME=JUICEFS_FILESYSTEM_NAME,
+              )
+          )
 
       secrets=dict(
           MINIO_USER={'secretKeyRef': {"name": "minio-admin", "key": "minio-admin-user"}},
@@ -798,8 +842,8 @@ async def aiinfn_option_form (self):
       return jinja2.Template(f.read()).render(
         splash_message=self.splash_manager.message(**id_vars),
         **id_vars,
-        cpus=[1, 2, 3, 4, 8],
-        mem_sizes=[2, 4, 8],
+        cpus=sorted([1, 2, 3, 4, 8] + self.get_group_allowance('cpu')),
+        mem_sizes=sorted([2, 4, 8] + self.get_group_allowance('mem_gb')),
         accelerators=[
           dict(
               type="gpu",
