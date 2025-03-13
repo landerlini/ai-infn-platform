@@ -87,8 +87,6 @@ spec:
       tolerations:
         {{ .Values.vkdMinioServerTolerations | toYaml | nindent 8 }}
 
-      nodeSelector:
-        {{ .Values.vkdMinioServerNodeSelector | toYaml | nindent 8 }}
 
 ---
 

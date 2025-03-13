@@ -35,7 +35,7 @@ bastionAdminPublicKey:
 
 # nfsServerAddressExternal enables using an external NFS Server instead of deploying one
 # Important! If modified, the Helm Chart of JupyterHub must be kept in-sync.
-nfsServerAddressExternal: "192.168.1.80"
+nfsServerAddressExternal: null
 
 # nfsServerAddress is the fixed-IP address of the NFS server (avoid DNS)
 # Important! If modified, the Helm Chart of JupyterHub must be kept in-sync.
@@ -80,6 +80,16 @@ nfsMetricsMonitoringPaths:
 nfsMetricsMonitoringSubPaths:
   - NFS
   
+################################################################################
+## Monitoring
+## ----------
+# prometheusBasicAuth is a string in the form username:password used to access prometheus
+# (usually from grafana)
+# Obtain with: 
+#   $ htpasswd -c auth <user> 
+#     <insert new password twice>
+#   $ cat auth
+prometheusBasicAuth: 
 
 ################################################################################
 ## JuiceFS. https://juicefs.com/docs/csi/getting_started
@@ -290,11 +300,6 @@ vkdImageBranch: jfs  #TODO put this back to "main"
 # vkdMinioServerTolerations is the hostPath location used to store S3 data
 # with snapshots of the filesystem to be used in batch jobs
 vkdMinioServerHostPath: /user-data/minio
-
-# nfsServerNodeSelector is the nodeSelector used to attach the NFS server
-# to a node with dedicated storage resources.
-vkdMinioServerNodeSelector:
-  storage: nfsexport
 
 # nfsServerTolerations define the tolerations of the NFS server
 vkdMinioServerTolerations:

@@ -1,0 +1,62 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: prometheus-stack
+  namespace: kube-system
+spec:
+  repo: https://prometheus-community.github.io/helm-charts
+  chart: kube-prometheus-stack
+  targetNamespace: monitoring
+  createNamespace: true
+  valuesContent: |-
+    grafana:
+      enabled: false
+    prometheus:
+      service:
+        type: ClusterIP 
+      prometheusSpec:
+        externalUrl: "https://hub.ai.cloud.infn.it/prometheus"
+        serviceMonitorSelectorNilUsesHelmValues: false
+        additionalScrapeConfigs:
+
+          - job_name: nfs
+            scrape_interval: 5s
+            static_configs:
+              - targets:
+                - {{ .Values.nfsServerAddressExternal | default .Values.nfsServerAddress | required "define nfsServerAddress" }}:{{ .Values.nfsMetricsPort }}
+            metrics_path: /
+          
+          - job_name: jhub
+            scrape_interval: 5s
+            static_configs:
+              - targets:
+                - "hub.default:8081"
+
+            metrics_path: /hub/metrics
+            bearer_token: {{ .Values.jhubMetricApiKey }}
+
+          - job_name: gpu-metrics
+            scrape_interval: 5s
+            metrics_path: /metrics
+            scheme: http
+            kubernetes_sd_configs:
+              - role: endpoints
+                namespaces:
+                  names:
+                    - gpu-operator
+            relabel_configs:
+              - action: replace
+                target_label: kubernetes_node
+                source_labels:
+                  - __meta_kubernetes_pod_node_name 
+
+{{ if .Values.jhubExtResAllocExporterEnabled }}
+          - job_name: ext-res
+            scrape_interval: 5s
+            static_configs:
+              - targets: 
+                - "ext-res-alloc-exporter.default:80"
+            metrics_path: /
+{{ end }}
+
+

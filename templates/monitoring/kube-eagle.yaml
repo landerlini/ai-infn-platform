@@ -1,0 +1,16 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: kube-eagle
+  namespace: kube-system
+spec:
+  repo: https://raw.githubusercontent.com/cloudworkz/kube-eagle-helm-chart/master
+  chart: kube-eagle
+  targetNamespace: monitoring
+  createNamespace: true
+  valuesContent: |-
+    serviceMonitor:
+      create: true
+      releaseLabel: prometheus-stack
+
+
