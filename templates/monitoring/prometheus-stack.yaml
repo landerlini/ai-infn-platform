@@ -55,7 +55,7 @@ spec:
             scrape_interval: 5s
             static_configs:
               - targets: 
-                - "ext-res-alloc-exporter.default:80"
+                - "ext-res-alloc-exporter.monitoring:80"
             metrics_path: /
 {{ end }}
 

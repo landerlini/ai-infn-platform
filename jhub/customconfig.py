@@ -411,6 +411,11 @@ class InfnSpawner(KubeSpawner):
             for g in self.get_user_groups()
         ]
 
+        self.tolerations += [
+            {"key": "reserved", "operator": "Equal", "value": g, "effect": "PreferNoSchedule"}
+            for g in self.get_user_groups()
+        ]
+
         logging.info("Affinity - preferred")
         logging.info(self.node_affinity_preferred)
         return options

@@ -1,4 +1,4 @@
-# Image name: harbor.cloud.infn.it/testbed-dm/python-prometheus-exporter:0.1-pre17
+# Image name: harbor.cloud.infn.it/testbed-dm/python-prometheus-exporter:0.1-pre18
 FROM python:alpine
 
 RUN python3 -m pip install prometheus-client kubernetes

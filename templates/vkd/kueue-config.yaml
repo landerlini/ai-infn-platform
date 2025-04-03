@@ -11,6 +11,12 @@ metadata:
 spec:
   nodeLabels:
     {{- pick . "node_selector" | values | first | toYaml | nindent 4 }}
+  nodeTaints: 
+  {{- range $key, $value := .node_selector }}
+    - key: {{ $key }}
+      value: {{ $value }}
+      effect: NoSchedule
+  {{- end }}
 ---
 {{ end }}
 

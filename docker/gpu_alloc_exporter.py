@@ -38,6 +38,7 @@ from kubernetes.client.models import (
     V1ServiceSpec, 
     V1ServicePort
 )
+from kubernetes.utils.quantity import parse_quantity
 
 PORT = int(os.environ.get("PORT", '9400'))
 DEBUG = os.environ.get("DEBUG", "false").lower() in ('yes', 'true', 'y')
@@ -131,7 +132,7 @@ class ExtendedResourceRunner:
         node_name = node.metadata.name
         model_name = node.metadata.labels.get(NODE_LABEL_FOR_MODEL, "Generic")
         for extended_resource in EXTENDED_RESOURCES:
-          node_count = int(getattr(node.status, "allocatable").get(extended_resource, 0))
+          node_count = parse_quantity(getattr(node.status, "allocatable").get(extended_resource, 0))
           if node_count > 0:
             number_of_allocatable_accelerator.add_metric(
                 [node_name, model_name, extended_resource],
@@ -184,9 +185,9 @@ class ExtendedResourceRunner:
           pod_counter = 0
           for container in pod.spec.containers:
             if container.resources.limits is not None:
-              pod_counter += int(container.resources.limits.get(extended_resource, 0))
+              pod_counter += parse_quantity(container.resources.limits.get(extended_resource, 0))
             elif container.resources.requests is not None:
-              pod_counter += int(container.resources.requests.get(extended_resource, 0))
+              pod_counter += parse_quantity(container.resources.requests.get(extended_resource, 0))
 
           if pod_counter > 0:  
             number_of_allocated_accelerator.add_metric(

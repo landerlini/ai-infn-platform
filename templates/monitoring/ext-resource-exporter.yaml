@@ -25,7 +25,7 @@ spec:
         app: ext-res-alloc-exporter
         tier: service
     spec:
-      serviceAccount: {{ include "jupyterhub.hub.fullname" . }}
+      serviceAccountName: ext-resource-exporter
       containers:
       - name: exporter
         image: {{ .Values.jhubCustomExporterImage }}
@@ -77,6 +77,42 @@ spec:
     targetPort: 8080
   selector:
     app: ext-res-alloc-exporter
+    
+
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ext-resource-exporter
+rules:
+  - apiGroups: [""]       # "" indicates the core API group
+    resources: ["nodes", "pods"]
+    verbs: ["get", "watch", "list"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ext-resource-exporter
+subjects:
+  - kind: ServiceAccount
+    name: ext-resource-exporter
+    namespace: monitoring
+roleRef:
+  kind: ClusterRole
+  name: ext-resource-exporter
+  apiGroup: rbac.authorization.k8s.io
+
+
+---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: ext-res-alloc-exporter
+  name: ext-resource-exporter
+  namespace: monitoring
 
 
 {{ end }}
