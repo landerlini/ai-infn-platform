@@ -224,6 +224,17 @@ acceleratorKnownModels:
     type: gpu
     extended_resource: nvidia.com/gpu
 
+
+  - name: NVIDIA-A30
+    short_name: a30
+    description: nVidia A30 (24 GB)
+    node_selector:
+      nvidia.com/gpu.product: NVIDIA-A30
+    memory_gb: 24
+    preference_weight: 6
+    type: gpu
+    extended_resource: nvidia.com/gpu
+
   - name: NVIDIA-A100-80GB-PCIe-MIG-2g.20gb
     short_name: mig-2g.20gb
     description: nVidia A100 2g MIG partition (20 GB)
@@ -264,6 +275,15 @@ acceleratorKnownModels:
     type: gpu
     extended_resource: nvidia.com/gpu
 
+  - name: AMD-U55C
+    short_name: u55c
+    description: nVidia A100 (80 GB)
+    node_selector:
+      accelerator: u55c
+    memory_gb: null
+    preference_weight: 1
+    type: fpga
+    extended_resource: amd.com/xilinx_u55c_gen3x16_xdma_base_3-0
 
 ################################################################################
 ## Virtual Kubelet Dispatcher configuration
@@ -413,7 +433,7 @@ jhubLabImages:
 jhubExtResAllocExporterEnabled: true
   
 # jhubCustomExporterImage defines the image used for the custom exporter
-jhubCustomExporterImage: "harbor.cloud.infn.it/testbed-dm/python-prometheus-exporter:0.2"
+jhubCustomExporterImage: "harbor.cloud.infn.it/testbed-dm/python-prometheus-exporter:0.1-pre18"
 
 # jhubExtResAllocExporterNamespaces list the namespaces monitored for allocated resources
 jhubExtResAllocExporterNamespaces:
@@ -491,6 +511,9 @@ jupyterhub:
       - key: "node-role.kubernetes.io/control-plane"
         operator: "Exists"
         effect: "NoSchedule"
+
+    nodeSelector:
+      node-role.kubernetes.io/jhub: "true"
 
 
     extraVolumes:
