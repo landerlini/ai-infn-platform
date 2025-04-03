@@ -53,7 +53,7 @@ spec:
   namespaceSelector: {} # match all.
   cohort: {{ .Release.Name }}
   resourceGroups:
-  - coveredResources: ["cpu", "memory", "nvidia.com/gpu"]
+  - coveredResources: ["cpu", "memory", "nvidia.com/gpu", 'amd.com/xilinx_u55c_gen3x16_xdma_base_3-0']
     flavors:
       - name: interlink
         resources:
@@ -62,6 +62,9 @@ spec:
           - name: memory
             nominalQuota: 16Gi
           - name: "nvidia.com/gpu"
+            nominalQuota: 0
+            borrowingLimit: 0
+          - name: "amd.com/xilinx_u55c_gen3x16_xdma_base_3-0"
             nominalQuota: 0
             borrowingLimit: 0
 
@@ -76,7 +79,7 @@ spec:
   namespaceSelector: {} # match all.
   cohort: {{ .Release.Name }}
   resourceGroups:
-  - coveredResources: ["cpu", "memory", "nvidia.com/gpu"]
+  - coveredResources: ["cpu", "memory", "nvidia.com/gpu", 'amd.com/xilinx_u55c_gen3x16_xdma_base_3-0']
     flavors:
     {{ range .Values.acceleratorKnownModels }}
     - {{ if get . "type" -}}
@@ -91,7 +94,7 @@ spec:
       - name: "memory"
         nominalQuota: 0
         borrowingLimit: 0
-      - name: "nvidia.com/gpu"
+      - name: "amd.com/xilinx_u55c_gen3x16_xdma_base_3-0"
         nominalQuota: 0
         borrowingLimit: 0
 

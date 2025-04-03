@@ -315,7 +315,9 @@ class InfnSpawner(KubeSpawner):
         for node in nodes.items:
           if InfnSpawner.is_node_reserved(node, groups) or InfnSpawner.is_node_virtual(node, groups):
             continue
-          accelerator = node.metadata.labels.get("nvidia.com/gpu.product", "none")
+
+          accelerator = node.metadata.labels.get("nvidia.com/gpu.product", node.metadata.labels.get("accelerator", "none"))
+
           if accelerator != "none":
             if hasattr(node.status, status_key):
               for return_item in return_list:
@@ -333,7 +335,7 @@ class InfnSpawner(KubeSpawner):
         for pod in pods.items:
           node = node_dict[pod.spec.node_name]
           if InfnSpawner.is_node_reserved(node, groups): continue
-          accelerator = node.metadata.labels.get("nvidia.com/gpu.product", "none")
+          accelerator = node.metadata.labels.get("nvidia.com/gpu.product", node.metadata.labels.get("accelerator", "none"))
           if accelerator != "none":
             for return_item in return_list:
               if accelerator == return_item['name']:
@@ -851,7 +853,7 @@ async def aiinfn_option_form (self):
         mem_sizes=sorted([2, 4, 8] + self.get_group_allowance('mem_gb')),
         accelerators=[
           dict(
-              type="gpu",
+              type=acc["type"],
               model=acc['name'],
               desc=acc.get('description', acc),
               avail=acc['avail'],

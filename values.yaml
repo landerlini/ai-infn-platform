@@ -275,9 +275,9 @@ acceleratorKnownModels:
     type: gpu
     extended_resource: nvidia.com/gpu
 
-  - name: AMD-U55C
+  - name: u55c
     short_name: u55c
-    description: nVidia A100 (80 GB)
+    description: AMD-Xilinx U55c FPGA
     node_selector:
       accelerator: u55c
     memory_gb: null
