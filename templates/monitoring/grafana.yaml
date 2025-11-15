@@ -1,0 +1,209 @@
+################################################################################
+## The directory on NFS must exist and be writable by user 472!
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-monitor
+  namespace: monitoring
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: user-monitor
+  template:
+    metadata:
+      labels:
+        app: user-monitor
+    spec:
+      serviceAccountName: usermonitor-account
+      restartPolicy: Always
+      volumes:
+        - name: ssh-key-volume
+          secret:
+            secretName: ssh-key-secret
+            defaultMode: 0400
+        - name: grafana-persistency
+          nfs:
+            server: {{ .Values.nfsServerAddress | required "nfsServerAddress requred" }}
+            path: {{ .Values.grafanaNfsPath | required "grafanaNfsPath" }}
+        - name: grafana-datasources
+          configMap:
+            name: grafana-datasources
+
+      containers:
+        - name: injector
+          image: landerlini/vkd-usermonitor
+          imagePullPolicy: Always
+          env:
+            - name: BRANCH
+              value: {{ .Values.vkdGitBranch | default "jfs" }}
+            - name: POSTGRES_PASSWORD
+              value: {{ .Values.postgresPassword | required "postgresPassword cannot be empty" }}
+          volumeMounts:
+            - name: ssh-key-volume
+              mountPath: /root/.ssh/id_rsa
+              subPath: id_rsa
+
+        - name: database
+          image: postgres
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_PASSWORD
+              value: {{ .Values.postgresPassword | required "postgresPassword cannot be empty" }}
+        - name: grafana
+          image: grafana/grafana-enterprise
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+            - name: grafana-persistency
+              mountPath: /var/lib/grafana/
+            - name: grafana-datasources
+              mountPath: /etc/grafana/provisioning/datasources/
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              value: superuser
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              value: {{ .Values.grafanaAdminPassword | required "grafanaAdminPassword cannot be empty" }}
+            - name: GF_LOG_LEVEL
+              value: debug
+            - name: GF_SERVER_ROOT_URL
+              value: 'https://{{ trimSuffix "/" .Values.hostname }}/grafana'
+            - name: GF_SERVER_DOMAIN
+              value: {{ .Values.grafanaServerDomain | required "grafanaServerDomain cannot be empty" }}
+            - name: GF_SERVER_SERVE_FROM_SUB_PATH
+              value: "true"
+            - name: GF_AUTH_GENERIC_OAUTH_ENABLED
+              value: "true"
+            - name: GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP
+              value: "true"
+            - name: GF_AUTH_GENERIC_OAUTH_AUTO_LOGIN
+              value: "false"
+            - name: GF_AUTH_GENERIC_OAUTH_NAME
+              value: {{ .Values.OAuthName | default "OAuth2" }}
+            - name: GF_AUTH_GENERIC_OAUTH_CLIENT_ID
+              value: {{ .Values.IamClientId | required "IamClientId must be set" }}
+            - name: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
+              value: {{ .Values.IamClientSecret | required "IamClientSecret must be set" }}
+            - name: GF_AUTH_GENERIC_OAUTH_AUTH_URL
+              value: {{ .Values.OAuthEndpoint }}/authorize
+            - name: GF_AUTH_GENERIC_OAUTH_TOKEN_URL
+              value: {{ .Values.OAuthEndpoint }}/token
+            - name: GF_AUTH_GENERIC_OAUTH_API_URL
+              value: {{ .Values.OAuthEndpoint }}/userinfo
+            - name: GF_AUTH_GENERIC_OAUTH_USE_PKCE
+              value: "true"
+            - name: GF_AUTH_GENERIC_OAUTH_USE_REFRESH_TOKEN
+              value: "true"
+            - name: GF_AUTH_GENERIC_OAUTH_SCOPES
+              value: openid email profile
+            - name: GF_AUTH_GENERIC_OAUTH_EMAIL_ATTRIBUTE_PATH
+              value: email
+            - name: GF_AUTH_GENERIC_OAUTH_LOGIN_ATTRIBUTE_PATH
+              value: preferred_username
+            - name: GF_AUTH_GENERIC_OAUTH_NAME_ATTRIBUTE_PATH
+              value: full_name
+            - name: GF_AUTH_GENERIC_OAUTH_ALLOWED_GROUPS
+              value: {{ .Values.grafanaOAuthAllowedGroup }}
+            - name: GF_AUTH_GENERIC_OAUTH_GROUPS_ATTRIBUTE_PATH
+              value: groups
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ssh-key-secret
+  namespace: monitoring
+type: Opaque
+stringData:
+  id_rsa: |
+{{- .Values.vkdPrivateKey | nindent 4 }}
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: monitoring
+data:
+  grafana-datasource.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: vkd-psql
+        type: postgres
+        url: localhost:5432
+        user: postgres
+        secureJsonData:
+          password: {{ .Values.postgresPassword }}
+        jsonData:
+          sslmode: disable
+
+      - name: prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus-stack-kube-prom-prometheus:9090
+        basicAuth: false
+        jsonData:
+          tlsSkipVerify: {{ .Values.tlsSkipVerify | default true }}
+        isDefault: true
+          # - name: prometheus
+          #   type: prometheus
+          #   access: proxy
+          #   url: "https://{{ trimSuffix "/" .Values.hostname }}/prometheus"
+          #   basicAuth: true
+          #   basicAuthUser: {{ .Values.prometheusBasicAuthUser | quote }}
+          #   secureJsonData:
+          #     basicAuthPassword: {{ .Values.prometheusBasicAuthPassword | quote }}
+          #   jsonData:
+          #     tlsSkipVerify: {{ .Values.tlsSkipVerify | default true }}
+          #   isDefault: false
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-monitor
+  namespace: monitoring
+  labels:
+    app: user-monitor
+spec:
+  selector:
+    app: user-monitor
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000
+  type: ClusterIP
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations: 
+    cert-manager.io/cluster-issuer: lets-issuer
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+  labels:
+    app.kubernetes.io/managed-by: Helm
+  name: usermonitor
+  namespace: monitoring
+spec: 
+  ingressClassName: nginx
+  rules:
+  - host: {{ .Values.hostname | required "hostname required" }}
+    http:
+      paths:
+      - backend:
+          service: 
+            name: user-monitor
+            port:
+              name: http
+        path: /grafana
+        pathType: Prefix
+

@@ -1,0 +1,111 @@
+models:
+  - name: cpu-only
+    short_name: cpu-only
+    description: None
+    node_selector:
+      accelerator: none
+    memory_gb: 0
+    preference_weight: 100
+    type: 
+
+  - name: NVIDIA-A100-80GB-PCIe-MIG-1g.10gb
+    short_name: mig-1g.10gb
+    description: nVidia A100 1g MIG partition (10 GB)
+    node_selector:
+      nvidia.com/gpu.product: NVIDIA-A100-80GB-PCIe-MIG-1g.10gb
+    memory_gb: 10
+    preference_weight: 9
+    type: gpu
+    extended_resource: nvidia.com/gpu
+
+  - name: NVIDIA-A100-PCIE-40GB-MIG-1g.5gb
+    short_name: mig-1g.5gb
+    description: nVidia A100 1g MIG partition (5 GB)
+    node_selector:
+      nvidia.com/gpu.product: NVIDIA-A100-PCIE-40GB-MIG-1g.5gb
+    memory_gb: 5
+    preference_weight: 9
+    type: gpu
+    extended_resource: nvidia.com/gpu
+
+  - name: Tesla-T4
+    short_name: t4
+    description: nVidia T4 (16 GB)
+    node_selector:
+      nvidia.com/gpu.product: Tesla-T4
+    memory_gb: 16
+    preference_weight: 8
+    type: gpu
+    extended_resource: nvidia.com/gpu
+
+  - name: Quadro-RTX-5000
+    short_name: rtx5000
+    description: nVidia RTX5000 (16 GB)
+    node_selector:
+      nvidia.com/gpu.product: Quadro-RTX-5000
+    memory_gb: 16
+    preference_weight: 7
+    type: gpu
+    extended_resource: nvidia.com/gpu
+
+
+  - name: NVIDIA-A30
+    short_name: a30
+    description: nVidia A30 (24 GB)
+    node_selector:
+      nvidia.com/gpu.product: NVIDIA-A30
+    memory_gb: 24
+    preference_weight: 6
+    type: gpu
+    extended_resource: nvidia.com/gpu
+
+  - name: NVIDIA-A100-80GB-PCIe-MIG-2g.20gb
+    short_name: mig-2g.20gb
+    description: nVidia A100 2g MIG partition (20 GB)
+    node_selector:
+      nvidia.com/gpu.product: NVIDIA-A100-80GB-PCIe-MIG-2g.20gb
+    memory_gb: 20
+    preference_weight: 6
+    type: gpu
+    extended_resource: nvidia.com/gpu
+
+  - name: NVIDIA-A100-80GB-PCIe-MIG-3g.30gb
+    short_name: mig-3g.30gb
+    description: nVidia A100 3g MIG partition (30 GB)
+    node_selector:
+      nvidia.com/gpu.product: NVIDIA-A100-80GB-PCIe-MIG-3g.30gb
+    memory_gb: 30
+    preference_weight: 5
+    type: gpu
+    extended_resource: nvidia.com/gpu
+
+  - name: NVIDIA-A100-80GB-PCIe-MIG-4g.40gb
+    short_name: mig-4g.40gb
+    description: nVidia A100 4g MIG partition (40 GB)
+    node_selector:
+      nvidia.com/gpu.product: NVIDIA-A100-80GB-PCIe-MIG-4g.40gb
+    memory_gb: 40
+    preference_weight: 3
+    type: gpu
+    extended_resource: nvidia.com/gpu
+
+  - name: NVIDIA-A100-80GB-PCIe-MIG-7g.80gb
+    short_name: a100
+    description: nVidia A100 (80 GB)
+    node_selector:
+      nvidia.com/gpu.product: NVIDIA-A100-80GB-PCIe-MIG-7g.80gb
+    memory_gb: 80
+    preference_weight: 2
+    type: gpu
+    extended_resource: nvidia.com/gpu
+
+  - name: u55c
+    short_name: u55c
+    description: AMD-Xilinx U55c FPGA
+    node_selector:
+      accelerator: u55c
+    memory_gb: null
+    preference_weight: 1
+    type: fpga
+    extended_resource: amd.com/xilinx_u55c_gen3x16_xdma_base_3-0
+

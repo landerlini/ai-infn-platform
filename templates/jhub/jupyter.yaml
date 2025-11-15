@@ -1,0 +1,145 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: jhub
+  namespace: kube-system
+spec:
+  repo: https://hub.jupyter.org/helm-chart/
+  chart: jupyterhub
+  targetNamespace: {{ .Values.jhubNamespace }}
+  createNamespace: true
+  version: {{ .Values.jhubChartVersion }}
+  valuesContent: |-
+
+    scheduling:
+      userScheduler:
+        enabled: false
+      podPriority:
+        enabled: false
+      userPlaceholder:
+        enabled: false
+
+    cull:
+      enabled: true
+      timeout: 3600
+      every: 600
+
+    proxy:
+      chp:
+        networkPolicy:
+          enabled: false
+      secretToken: {{ .Values.jhubProxySecretToken | required "jhubProxySecretToken required" }}
+
+    singleuser:
+      networkPolicy:
+            enabled: false
+
+    hub:
+      labels:
+        chart-revision: {{ .Release.Revision | quote }}
+      image:
+        name: quay.io/jupyterhub/k8s-hub
+        tag: '4.3.1'
+
+      cookieSecret: {{ .Values.jhubCookieSecret | required "jhubCookieSecret required" }}
+
+      networkPolicy:
+        enabled: false
+
+      db:
+        type: sqlite-pvc
+        upgrade: true
+        pvc:
+          accessModes:
+            - ReadWriteOnce
+          storage: 1Gi
+          storageClassName: local-storage
+
+      # JupyterHub should run on the master node
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+
+      nodeSelector:
+        node-role.kubernetes.io/jhub: "true"
+
+
+      extraVolumes:
+        - name: jhub-config
+          configMap:
+            name: jhub-config
+            items:
+                - key: customconfig.py
+                  path: customconfig.py
+                - key: spawn_form.jinja2.html
+                  path: spawn_form.jinja2.html
+                - key: envs-setup.sh
+                  path: envs-setup.sh
+        - name: nfs
+          nfs:
+            server: {{ .Values.nfsServerAddress }}
+            path: "/"
+
+      extraVolumeMounts:
+        - name: jhub-config
+          mountPath: /usr/local/etc/jupyterhub/jupyterhub_config.d/
+        - name: nfs
+          mountPath: {{ .Values.nfsMountPoint | default "/nfs-shared" }}
+
+      extraEnv:
+        LOGIN_SERVICE:      {{ .Values.OAuthName | required "OAuthName required" }}
+        OAUTH_CALLBACK_URL: https://{{ .Values.hostname | required "hostname required" }}/hub/oauth_callback
+        OAUTH_ENDPOINT:     {{ .Values.OAuthEndpoint | required "OAuthEndpoint required" }}
+        OAUTH_GROUPS:       {{ .Values.jhubOAuthGroups | required "jhubOAuthGroups required" }}
+        OAUTH_ADMIN_GROUPS: {{ .Values.jhubAdminGroups | required "jhubAdminGroups required" }}
+        IAM_CLIENT_ID:      {{ .Values.IamClientId | required "IamClientId required" }}
+        IAM_CLIENT_SECRET:  {{ .Values.IamClientSecret | required "IamClientSecret required" }}
+        START_TIMEOUT:      {{ .Values.jhubStartTimeout | default 20 | quote }}
+        NFS_MOUNT_POINT:    {{ .Values.nfsMountPoint | default "/nfs-shared" }}
+        NFS_SERVER_ADDRESS: {{ .Values.nfsServerAddress | required "nfsServerAddress required" }} 
+        CVMFS_CLAIM_NAME:   {{ .Values.jhubCVMFSpvc | default "" }}
+
+          # JUICEFS_ENABLED = os.environ.get("JUICEFS_ENABLED") in ["true", "yes", "y"]
+          # JUICEFS_MOUNT_POINT = Path(os.environ.get("JUICEFS_MOUNT_POINT", "/jfs"))
+          # JUICEFS_PVC_NAME = os.environ.get("JUICEFS_PVC_NAME", "juicefs")
+          # JUICEFS_S3_BUCKET = os.environ.get("JUICEFS_S3_BUCKET", "")
+          # JUICEFS_S3_ACCESS_KEY = os.environ.get("JUICEFS_S3_ACCESS_KEY", "")
+          # JUICEFS_S3_SECRET_KEY = os.environ.get("JUICEFS_S3_SECRET_KEY", "")
+          # JUICEFS_METADATA_DB = os.environ.get("JUICEFS_METADATA_DB", "")
+          # JUICEFS_FILESYSTEM_NAME = os.environ.get("JUICEFS_FILESYSTEM_NAME", "")
+
+        STARTUP_SCRIPT: {{ .Values.jhubEnvsSetup | default "/envs/setup.sh" }} 
+        DEBUG: {{ .Values.jhubDebug | default true | quote }} 
+
+        HOME_NAME: {{ .Values.jhubHomeName | default "home" }}
+        SSH_PORT: {{ .Values.jhubSshPort | default 22 | quote }}
+        JHUB_NAMESPACE: {{ .Values.jhubNamespace }}
+        DEFAULT_SPLASH_MESSAGE: {{ .Values.jhubDefaultSplashMessage | default "Welcome" }}
+        DEFAULT_JLAB_IMAGES: {{ .Values.jhubDefaultJLabImages | required "jhubDefaultJLabImages required" | toJson | squote }}
+
+        # Metrics custom token
+        JUPYTERHUB_METRICS_API_KEY: {{ .Values.jhubMetricApiKey | required "jhubMetricApiKey required" }}
+        SYSTEM_VOLUMES: {{ .Values.jhubSystemVolumes | required "jhubSystemVolumes required" | toJson | squote }} 
+
+        JUPYTERHUB_CRYPT_KEY: {{ .Values.jhubCryptKey | required "jhubCryptKey required" }}
+
+        GPU_MODEL_DESCRIPTION: {{ ( .Files.Get "jhub/gpu-known-models.yaml" | fromYaml).models | toJson | squote }}
+
+
+        # Virtual Kubelet Dispatcher configuration
+        # ENABLE_VKD = os.environ.get("ENABLE_VKD", "").lower() in ["true", "yes", "y"]
+        # VKD_SIDECAR_IMAGE = os.environ.get("VKD_SIDECAR_IMAGE", "harbor.cloud.infn.it/testbed-dm/vkd-dev:v0.0")
+        # VKD_SIDECAR_NAME = os.environ.get("VKD_SIDECAR_NAME", "vkd")
+        # VKD_ADMIN_SERVICE_ACCOUNT = os.environ.get("VKD_ADMIN_SERVICE_ACCOUNT", "vkd-batch-admin")
+        # VKD_ADMIN_USER_GROUP = os.environ.get("VKD_ADMIN_USER_GROUP", "vkd")
+        # VKD_PORT = os.environ.get("VKD_PORT", "8000")
+        # VKD_MINIO_URL = os.environ.get("VKD_MINIO_URL", f"minio-singleuser.{JHUB_NAMESPACE}:9000")
+        # VKD_MINIO_MAXIMUM_FOLDER_SIZE_GB = os.environ.get("VKD_MINIO_MAXIMUM_FOLDER_SIZE_GB", "1.0")
+        # VKD_IMAGE_BRANCH = os.environ.get("VKD_IMAGE_BRANCH", "main")
+        # VKD_NAMESPACE = os.environ.get("VKD_NAMESPACE", "vkd")
+
+
+
+
+
