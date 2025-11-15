@@ -1,433 +1,52 @@
-################################################################################
-## Ingress configuration
-## ---------------------
-
-# HostName of the setup for ingress configuration
 hostname: 
+nfsServerAddress: 123.56.78.90
 
 ################################################################################
-## BastionSSH configuration
-## ------------------------
+## Monitoring (templates/monitoring/*.yaml)
 
-# bastionImage is the docker image of the bastion pod (main container)
-bastionImage: "landerlini/bastion:v0.1a"
-
-# bastionPort is the *internal* port to configure the sshd server
-bastionPort: 22
-
-# bastionNodePort is the *external* nodePort to configure the bastion service.
-# It is the port used to access the bastion from outside.
-bastionNodePort: 30022
-
-# bastionAdminPublicKey is the public RSA key of an administrator 
-bastionAdminPublicKey: 
-
-
-################################################################################
-## NFS server configuration
-## ------------------------
-## Important. You *must* define manually on which node to setup the platform 
-## storage, by setting the label storage=nfsexport. For example, to use a master 
-## volume on the node "vnode-0.localdomain", you can issue:
-## ```
-## kubectl label nodes vnode-0.localdomain storage=nfsexport
-## ```
-
-# nfsServerAddressExternal enables using an external NFS Server instead of deploying one
-# Important! If modified, the Helm Chart of JupyterHub must be kept in-sync.
-nfsServerAddressExternal: null
-
-# nfsServerAddress is the fixed-IP address of the NFS server (avoid DNS)
-# Important! If modified, the Helm Chart of JupyterHub must be kept in-sync.
-nfsServerAddress: null #"10.43.0.2"
-
-# nfsServerImage is the docker image of the NFS server
-nfsServerImage: k8s.gcr.io/volume-nfs:0.8
-
-# nfsServerInternalMountPath is the mount point *inside* the NFS server image 
-nfsServerInternalMountPath: /exports
-
-# nfsServerHostPath is the hostPath where the nfsServer store shared data
-nfsServerHostPath: /mnt/hub-warm
-
-# nfsServerNodeSelector is the nodeSelector used to attach the NFS server
-# to a node with dedicated storage resources.
-nfsServerNodeSelector:
-  storage: nfsexport
-
-# nfsServerTolerations define the tolerations of the NFS server
-nfsServerTolerations:
-  - key: "node-role.kubernetes.io/control-plane"
-    operator: "Exists"
-    effect: "NoSchedule"
-
-# nfsMetricsPort define the port for the metrics on disk occupancy
-nfsMetricsPort: 9400
-
-# nfsMetricsPort defines a mapping label:mountPath for the monitored volumes
-nfsMetricsMonitoringVolumes:
-  nVME: /exports
-
-# nfsMetricsDebugMode enables stdout logs while generating disk occupanc metrics
-nfsMetricsDebugMode: True
-
-# nfsMetricsMonitoringPaths maps label:mountPath for monitored directories
-nfsMetricsMonitoringPaths:
-  S3: /exports/minio
-  NFS: /exports/nfs
-
-# nfsMetricsMonitoringSubPaths list paths for which monitoring each subdir separately
-nfsMetricsMonitoringSubPaths:
-  - NFS
-  
-################################################################################
-## Monitoring
-## ----------
-# prometheusBasicAuth is a string in the form username:password used to access prometheus
-# (usually from grafana)
-# Obtain with: 
-#   $ htpasswd -c auth <user> 
-#     <insert new password twice>
-#   $ cat auth
-prometheusBasicAuth: 
-
-################################################################################
-## JuiceFS. https://juicefs.com/docs/csi/getting_started
-## -----------------------------------------------------
-
-# juicefsEnabled enables the JuiceFS configuration (default: True).
-# !!! WARNING !!!
-# If disabling juicefs, also remove jfs volume and volumeMouns from jupyterhub:
-#   jupyterhub.hub.extraVolumes
-#   jupyterhub.hub.extraVolumeMounts
-juicefsEnabled: True
-
-# juicefsBucket is the url to the bucket where to store jfs data
-juicefsBucket: 
-
-# juicefsAccessKey is the access key of the object storage
-juicefsAccessKey: 
-
-# juicefsSecretKey is the secret key of the object storage
-juicefsSecretKey: 
-
-# juicefsPersistentVolumeName is the name of the pv created for JuiceFS
-juicefsPersistentVolumeName: juicefs-pv
-
-# juicefsPersistentVolumeClaimName is the name of the pvc to share JuiceFS
-# !!! WARNING !!!
-# If renaming the pvc, modify consistently the volume mounted in the hub
-#   jupyterhub.hub.extraVolumes
-juicefsPersistentVolumeClaimName: juicefs
-
-# juicefsStorage is the size of the allocated storage
-juicefsStorage: 256Gi
-
-# juicefsMetaNamespace is the namespace where redis (or the meta engine) is installed
-juicefsMetaNamespace: juicefs-meta
-
-# juicefsMetaAuthToken is the token for accessing Redis
-juicefsMetaAuthToken: 
-
-# juicefsMetaPort is the NodePort to access redis from remote nodes
-juicefsMetaPort: 30379
-
-# juicefsMetaTrustedIPs is the list of IPs from which Redis accepts connections 
-juicefsMetaTrustedCIDRs: 
- - 131.154.99.38/32  # Cloud@CNAF
-  
-
-################################################################################
-## Cern Virtual-Machine FileSystem (cvmfs)
-## ---------------------------------------
-## cvmfs is a popular tool for distributing the software of the experiments,
-## in read-only mode, through the nodes of a distributed computing system.
-## This platform relies on the the CSI provided by the GitHub repository
-## https://github.com/cvmfs-contrib/cvmfs-csi.
-
-# cvmfsUseGeoAPI enables using the GeoAPI of cvmfs in config.d
-cvmfsUseGeoAPI: 'yes'
-
-# cvmfsHttpProxy defines the Http proxy to access the cvmfs stratum0
-cvmfsHttpProxy: DIRECT
-
-# cvmfsQuotaLimit indicates the size of the local quota
-cvmfsQuotaLimit: 1000
-
-# cvmfsCacheBase indicates the position for the local cache
-cvmfsCacheBase: /cvmfs-localcache
-
-# cvmfsPersistentVolumeClaim indicates the name 
-cvmfsPersistentVolumeClaim: cvmfs
-cvmfsNamespaces:
-  - default
-  - vkd
-
-
-
-################################################################################
-## Accelerators (GPUs)
-## -------------------
-
-# gpuMigStrategy indicate how kubernetes allocates MIG partitions of GPUs
-# https://docs.nvidia.com/datacenter/cloud-native/kubernetes/latest/index.html
-gpuMigStrategy: single
-
-# GPU-equipped nodes must be marked with a label with same key as gpuAffinityLabel
-gpuAffinityLabel: accelerator
-
-# GPU-equipped nodes may have node taints to avoid CPU workloads to spoil resources.
-# If such taints are set, the nVidia device-plugin must tolerate them.
-gpuNodeTaints: 
-  - nvidia.com/gpu
-
-# acceleratorKnownModels is the "database" of all the GPU and FPGA models known 
-# to the cluster. Knowing a model does not imply having it allocatable, but 
-# models not listed here won't be usable even if made allocatable by Kubernetes.
-acceleratorKnownModels:
-  - name: cpu-only
-    short_name: cpu-only
-    description: None
-    node_selector:
-      accelerator: none
-    memory_gb: 0
-    preference_weight: 100
-    type: 
-
-  - name: NVIDIA-A100-80GB-PCIe-MIG-1g.10gb
-    short_name: mig-1g.10gb
-    description: nVidia A100 1g MIG partition (10 GB)
-    node_selector:
-      nvidia.com/gpu.product: NVIDIA-A100-80GB-PCIe-MIG-1g.10gb
-    memory_gb: 10
-    preference_weight: 9
-    type: gpu
-    extended_resource: nvidia.com/gpu
-
-  - name: Tesla-T4
-    short_name: t4
-    description: nVidia T4 (16 GB)
-    node_selector:
-      nvidia.com/gpu.product: Tesla-T4
-    memory_gb: 16
-    preference_weight: 8
-    type: gpu
-    extended_resource: nvidia.com/gpu
-
-  - name: Quadro-RTX-5000
-    short_name: rtx5000
-    description: nVidia RTX5000 (16 GB)
-    node_selector:
-      nvidia.com/gpu.product: Quadro-RTX-5000
-    memory_gb: 16
-    preference_weight: 7
-    type: gpu
-    extended_resource: nvidia.com/gpu
-
-
-  - name: NVIDIA-A30
-    short_name: a30
-    description: nVidia A30 (24 GB)
-    node_selector:
-      nvidia.com/gpu.product: NVIDIA-A30
-    memory_gb: 24
-    preference_weight: 6
-    type: gpu
-    extended_resource: nvidia.com/gpu
-
-  - name: NVIDIA-A100-80GB-PCIe-MIG-2g.20gb
-    short_name: mig-2g.20gb
-    description: nVidia A100 2g MIG partition (20 GB)
-    node_selector:
-      nvidia.com/gpu.product: NVIDIA-A100-80GB-PCIe-MIG-2g.20gb
-    memory_gb: 20
-    preference_weight: 6
-    type: gpu
-    extended_resource: nvidia.com/gpu
-
-  - name: NVIDIA-A100-80GB-PCIe-MIG-3g.30gb
-    short_name: mig-3g.30gb
-    description: nVidia A100 3g MIG partition (30 GB)
-    node_selector:
-      nvidia.com/gpu.product: NVIDIA-A100-80GB-PCIe-MIG-3g.30gb
-    memory_gb: 30
-    preference_weight: 5
-    type: gpu
-    extended_resource: nvidia.com/gpu
-
-  - name: NVIDIA-A100-80GB-PCIe-MIG-4g.40gb
-    short_name: mig-4g.40gb
-    description: nVidia A100 4g MIG partition (40 GB)
-    node_selector:
-      nvidia.com/gpu.product: NVIDIA-A100-80GB-PCIe-MIG-4g.40gb
-    memory_gb: 40
-    preference_weight: 3
-    type: gpu
-    extended_resource: nvidia.com/gpu
-
-  - name: NVIDIA-A100-80GB-PCIe-MIG-7g.80gb
-    short_name: a100
-    description: nVidia A100 (80 GB)
-    node_selector:
-      nvidia.com/gpu.product: NVIDIA-A100-80GB-PCIe-MIG-7g.80gb
-    memory_gb: 80
-    preference_weight: 2
-    type: gpu
-    extended_resource: nvidia.com/gpu
-
-  - name: u55c
-    short_name: u55c
-    description: AMD-Xilinx U55c FPGA
-    node_selector:
-      accelerator: u55c
-    memory_gb: null
-    preference_weight: 1
-    type: fpga
-    extended_resource: amd.com/xilinx_u55c_gen3x16_xdma_base_3-0
-
-################################################################################
-## Virtual Kubelet Dispatcher configuration
-## ----------------------------------------
-
-# vkdEnables enable the configuration of the virtual kubelet dispatcher 
-# components, including minio and kaniko
-vkdEnabled: true
-
-vkdNamespace: vkd
-
-# vkdSidecarImage is the docker image used as vkd server in a sidecar container
-vkdSidecarImage: "harbor.cloud.infn.it/testbed-dm/vkd-dev:v0.0"
-
-# vdkSidecarName is the name of the sidecar container
-vkdSidecarName: vkd
-
-# vkdAdminServiceAccount is the name of the service account that can submit jobs
-vkdAdminUserGroup: vkd-batch-admin
-
-# vkdAdminUserGroup is the JupyterHub system=true Admin Group to modify queues and quotas
-vkdAdminUserGroup: vkd
-
-# vkdPort is the port of the vkd container 
-vkdPort: 8000
-
-# vkdMinioUrl is the URL of the single-user Minio service to snapshot the filesystem before
-# at submission time.
-vkdMinioUrl: minio-singleuser:9000
-
-# vkdImageBranch is the branch of the github repository the docker image downloads for CD
-vkdImageBranch: jfs  #TODO put this back to "main"
-
-# vkdMinioServerTolerations is the hostPath location used to store S3 data
-# with snapshots of the filesystem to be used in batch jobs
-vkdMinioServerHostPath: /user-data/minio
-
-# nfsServerTolerations define the tolerations of the NFS server
-vkdMinioServerTolerations:
-  - key: "node-role.kubernetes.io/control-plane"
-    operator: "Exists"
-    effect: "NoSchedule"
-
-vkdPriorityClasses:
-  - name: "lowest"
-    value: -100
-  - name: "lower"
-    value: -80
-  - name: "higher"
-    value: -50
-  - name: "highest"
-    value: -20
-  - name: "fire"
-    value: -10
-    preemptionPolicy: PreemptLowerPriority
-    description: |
-      Fire priority can kill other jobs to get resources. 
-      Can waste CPU resources. Should be used upon authorization.
-     
-
-################################################################################
-## Offloading with interlink
-#
-
-# interlinkEnabled create the kueue resources to enable offloading to vk
-interlinkEnabled: true
-
-
-
-
-################################################################################
-## Static website configuration (docs/blog ...)
-## --------------------------------------------
-
-# wwwEnabled enables a static web site service (based on nginx) configuring the
-# related ingress. The website must be available via NFS and can be developed 
-# from JupyterLab.
-wwwEnabled: true
-
-# wwwPrefix is the url prefix mapped by nginx-ingress to the nginx-server
-wwwPrefix: /docs
-
-# wwwPathToStaticWebsite is the path, relative to the served NFS volume, 
-# where the static website is stored.
-# Important: the `wwwPrefix` must be reproduced as a directory-tree structure 
-# in the filesystem.
-wwwPathToStaticWebsite: /www
- 
-################################################################################
-## Dashboard configuration
-## -----------------------
-
-# dashboardEnabled enables the dash personal user's dashboard under /dash
-dashboardEnabled: true
-
-# dashboardMemoryLimit defines the limit to memory of each dashboard container
-dashboardMemoryLimit: "128Mi"
-
-# dashboardCpuLimit defines the limit to the memory of each dashboard container
-dashboardCpuLimit: "250m"
-
-# dashboardGitBranch defines the branch of github.com/landerlini/ai-infn-dashboard
-# used for GitOps (currently the repository is only updated on pod manual deletion)
-dashboardGitBranch: "master"
-
-# dashboardFlaskSecret is the secret of the web application for encrypting sessions
-dashboardFlaskSecret: 
-
-# dashboardServiceAccount is the name of the service account of the dashboard
-dashboardServiceAccount: "dashboard-reader"
-
-
-
-################################################################################
-## Ancillary JupyterHub configurtions
-## ----------------------------------
-
-jhubIamServer: https://iam.cloud.infn.it/
-jhubAllowedIamGroups:
-  - users/ai-infn
-  - ml-infn-platform
-  - ml-infn-users
-
-jhubAdminIamGroups:
-  - ml-infn
-  - admins/ai-infn
-
-jhubIamClientId: 
-jhubIamClientSecret: 
-jhubCryptKey: 
+# To be generated with: `openssl rand -hex 32`
 jhubMetricApiKey:
 
-jhubDatabaseLocalPath: /var/local
-jhubDebug: false
-jhubStartTimeout: 20
-jhubStartupScript: /envs/setup.sh
-rbac:
-  create: true
-  roleName: hub
+# Local path of the database
+jhubDatabaseLocalPath: /data/aiinfn/jhub/db
 
-jhubHomeDirectoryName: home
-jhubSplashMessage: Welcome to the AI_INFN Platform!
-jhubLabImages: 
-  AI_INFN Multi-environment setup: harbor.cloud.infn.it/datacloud-templates/jlab-ai-infn:1.3.0-1-v1.3
+# Version of the Jupyter hub helm chart as from https://hub.jupyter.org/helm-chart/
+jhubChartVersion: 4.3.1
+
+# Namespace where to install the interactive part of the JupyterHub
+jhubNamespace: jhub
+
+# Service account of jupyter hub
+jhubServiceAccount: hub
+
+# To be generated with: `openssl rand -hex 32`
+jhubProxySecretToken: 
+ 
+# To be generated with: `openssl rand -hex 32`
+jhubCookieSecret: 
+
+# To be generated with: `openssl rand -hex 32`
+jhubCryptKey:
+
+jhubCVMFSpvc: cvmfs-jhub
+
+################################################################################
+# Grafana (templates/monitoring/grafana.yaml)
+#
+grafanaNfsPath: /grafana
+vkdGitBranch: jfs
+  
+# To be generated with: `openssl rand -hex 32`
+postgresPassword: 
+
+
+# To be defined in values.yaml
+grafanaAdminPassword:
+
+grafanaServerDomain: infn.it
+
+################################################################################
+## Custom allocation monitoring (templates/monitoring/ext-resource-exporter.yaml)
 
 # jhubExtResAllocExporterEnabled enables a custom prometheus exporter for gpu allocation
 jhubExtResAllocExporterEnabled: true
@@ -457,314 +76,63 @@ jhubExtResAllocExporterDebug: no
 
 # jhubExtResAllocExporterNodeLabelForModel defines the node label to identify the accelerator model
 jhubExtResAllocExporterNodeLabelForModel: "nvidia.com/gpu.product"
+  
 
-###############################################################################
-## JupyterHub Helm chart configuration
-jupyterhub:
-  ingress:
-    enabled: false
+################################################################################
+## BastionSSH configuration
+## ------------------------
 
-  scheduling:
-    userScheduler:
-      enabled: false
-    podPriority:
-      enabled: false
-    userPlaceholder:
-      enabled: false
+# bastionImage is the docker image of the bastion pod (main container)
+bastionImage: "landerlini/bastion:v0.1a"
 
-  cull:
-    enabled: true
-    timeout: 3600
-    every: 600
+# bastionPort is the *internal* port to configure the sshd server
+bastionPort: 22
 
-  proxy:
-    chp:
-      networkPolicy:
-        enabled: false
-    secretToken: #<PUT HERE A RANDOM TOKEN openssl rand -hex 32>
+# bastionNodePort is the *external* nodePort to configure the bastion service.
+# It is the port used to access the bastion from outside.
+bastionNodePort: 30022
 
-  singleuser:
-    networkPolicy:
-          enabled: false
-
-  hub:
-    image:
-      name: quay.io/jupyterhub/k8s-hub
-      tag: '3.3.7'
-
-    cookieSecret: #<PUT HERE A RANDOM TOKEN openssl rand -hex 32>
-
-    networkPolicy:
-      enabled: false
-
-    db:
-      type: sqlite-pvc
-      upgrade: true
-      pvc:
-        accessModes:
-          - ReadWriteOnce
-        storage: 1Gi
-        storageClassName: local-storage
-
-    # JupyterHub should run on the master node
-    tolerations:
-      - key: "node-role.kubernetes.io/control-plane"
-        operator: "Exists"
-        effect: "NoSchedule"
-
-    nodeSelector:
-      node-role.kubernetes.io/jhub: "true"
+# bastionAdminPublicKey is the public RSA key of an administrator 
+bastionAdminPublicKey: 
 
 
-    extraVolumes:
-      - name: jhub-config
-        configMap:
-          name: jhub-config
-          items:
-           - key: customconfig.py
-             path: customconfig.py
-           - key: spawn_form.jinja2.html
-             path: spawn_form.jinja2.html
-           - key: envs-setup.sh
-             path: envs-setup.sh
+################################################################################
+## NFS metric config
+## ------------------------
 
-      - name: shared
-        nfs:
-          server: "192.168.1.80"
-          path: "/"
+# nfsMetricsPort define the port for the metrics on disk occupancy
+nfsMetricsPort: 9400
 
-      - name: jfs
-        persistentVolumeClaim: 
-          claimName: juicefs
+# nfsMetricsPath define the query path to access the NFS server metrics
+nfsMetricsPath: "/metrics"
 
-    extraVolumeMounts:
-      - name: jhub-config
-        mountPath: /usr/local/etc/jupyterhub/jupyterhub_config.d/
+################################################################################
+# JupyterHub configuration
+OAuthName: INFN Cloud
+OAuthEndpoint: https://iam.cloud.infn.it
+IamClientId:
+IamClientSecret: 
+jhubOAuthGroups: users/ai-infn
+jhubAdminGroups: admins/ai-infn
+jhubStartTimeout: 120
+grafanaOAuthGroups: users/ai-infn
+grafanaAdminGroups: admins/ai-infn
+nfsMountPoint: "/nfs-shared"
+jhubEnvsSetup: "/envs/setup.sh"
 
-      - name: shared
-        mountPath: /nfs-shared
+jhubDebug: "yes"
 
-      - name: jfs
-        mountPath: /jfs
+jhubHomeName: "home"
+sshPort: 22
+jhubDefaultSplashMessage: "Welcome to the AI_INFN Hackathon in Pavia!"
+jhubDefaultJLabImages: 
+  AI_INFN Platform: "harbor.cloud.infn.it/unpacked/jlab-ai-infn:2.0.0-ai1.4"
 
-    extraEnv:
-      OAUTH_CALLBACK_URL: 
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: oauthCallback
+jhubSystemVolumes: 
+  - "vkd"
+  - "www"
+  - "envs"
 
-      OAUTH_ENDPOINT: 
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: oauthEndpoint
-
-      OAUTH_GROUPS: 
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: oauthGroups
-
-      OAUTH_ADMIN_GROUPS: 
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: oauthAdminGroups
-
-      IAM_CLIENT_ID: 
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: oauthIamClientId
-
-      IAM_CLIENT_SECRET: 
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: oauthIamClientSecret
-
-      JUPYTERHUB_CRYPT_KEY: 
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: jupyterhubCryptKey
-
-      JUPYTERHUB_METRICS_API_KEY:
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: metricsApiKey
-
-      NFS_SERVER_ADDRESS:
-        valueFrom:
-          configMapKeyRef:
-            name: jhub-env
-            key: nfsServerAddress
-
-      NFS_MOUNT_POINT:
-        valueFrom:
-          configMapKeyRef:
-            name: jhub-env
-            key: nfsMountPoint
-
-      JUICEFS_ENABLED:
-        valueFrom:
-          configMapKeyRef:
-            name: jhub-env
-            key: enableJfs
-
-      JUICEFS_MOUNT_POINT:
-        valueFrom:
-          configMapKeyRef:
-            name: jhub-env
-            key: jfsMountPoint
-
-      JUICEFS_PVC_NAME:
-        valueFrom:
-          configMapKeyRef:
-            name: jhub-env
-            key: jfsPvcName
-
-      JUICEFS_S3_BUCKET:
-        valueFrom:
-          secretKeyRef:
-            name: juicefs-secret
-            key: bucket
-
-      JUICEFS_S3_ACCESS_KEY:
-        valueFrom:
-          secretKeyRef:
-            name: juicefs-secret
-            key: access-key
-
-      JUICEFS_S3_SECRET_KEY:
-        valueFrom:
-          secretKeyRef:
-            name: juicefs-secret
-            key: secret-key
-
-      JUICEFS_METADATA_DB: 
-        valueFrom:
-          secretKeyRef:
-            name: juicefs-secret
-            key: metaurl
-
-      JUICEFS_FILESYSTEM_NAME: 
-        valueFrom:
-          secretKeyRef:
-            name: juicefs-secret
-            key: name
-
-      START_TIMEOUT:
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: jupyterStartTimeout
-
-      STARTUP_SCRIPT:
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: startupScript
-
-      DEBUG:
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: debug
-
-      HOME_NAME: 
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: homeName
-
-      SSH_PORT: 
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: sshPort
-
-      JHUB_NAMESPACE:
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: jhubNamespace
-
-      DEFAULT_SPLASH_MESSAGE: 
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: defaultSplashMessage
-
-      DEFAULT_JLAB_IMAGES: 
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: defaultJlabImages
-
-      GPU_MODEL_DESCRIPTION:
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: gpuModelDescription
-
-      CONFIGMAP_MOUNT_PATH:
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: configmapMountPath
-
-      ENABLE_VKD:
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: enableVkd
-      
-      VKD_SIDECAR_IMAGE:
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: vkdSidecarImage
-      
-      VKD_SIDECAR_NAME:
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: vkdSidecarName
-      
-      VKD_ADMIN_SERVICE_ACCOUNT:
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: vkdAdminServiceAccount
-      
-      VKD_ADMIN_USER_GROUP:
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: vkdAdminUserGroup
-      
-      VKD_PORT:
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: vkdPort
-      
-      VKD_MINIO_URL:
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: vkdMinioUrl
-      
-      VKD_IMAGE_BRANCH:
-        valueFrom: 
-          configMapKeyRef:
-            name: jhub-env
-            key: vkdImageBranch
-
-    
-
-
+# vkdPrivateKey is the SSH key to GitOps landerlini/vk-dispatcher (deploy key)
+vkdPrivateKey:
 

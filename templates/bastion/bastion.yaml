@@ -70,16 +70,16 @@ spec:
           - -o StrictModes=no
           - -o Port={{ .Values.bastionPort }}
 
-        volumeMounts:
-          - name: jupyterhome
-            mountPath: /jupyterhome
-            readOnly: True
+        # volumeMounts:
+        #   - name: jupyterhome
+        #     mountPath: /jupyterhome
+        #     readOnly: True
 
-      volumes:
-        - name: jupyterhome
-          nfs:
-            server: {{ .Values.nfsServerAddressExternal | default .Values.nfsServerAddress }}
-            path: "/"
+      # volumes:
+      #   - name: jupyterhome
+      #     nfs:
+      #       server: {{ .Values.nfsServerAddressExternal | default .Values.nfsServerAddress }}
+      #       path: "/"
 ---
 apiVersion: v1
 kind: Service

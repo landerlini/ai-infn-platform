@@ -16,6 +16,7 @@ import subprocess
 from oauthenticator.oauth2 import OAuthenticator
 from oauthenticator.generic import GenericOAuthenticator
 from tornado import gen
+from tornado.web import HTTPError
 from kubespawner import KubeSpawner
 import requests
 import yaml
@@ -55,6 +56,7 @@ JUICEFS_S3_ACCESS_KEY = os.environ.get("JUICEFS_S3_ACCESS_KEY", "")
 JUICEFS_S3_SECRET_KEY = os.environ.get("JUICEFS_S3_SECRET_KEY", "")
 JUICEFS_METADATA_DB = os.environ.get("JUICEFS_METADATA_DB", "")
 JUICEFS_FILESYSTEM_NAME = os.environ.get("JUICEFS_FILESYSTEM_NAME", "")
+CVMFS_CLAIM_NAME = os.environ.get("CVMFS_CLAIM_NAME", "")
 
 STARTUP_SCRIPT = Path(os.environ.get("STARTUP_SCRIPT", "/envs/setup.sh"))
 DEBUG = os.environ.get("DEBUG", "").lower() in ["true", "yes", "y"]
@@ -103,7 +105,7 @@ if "JUPYTERHUB_CRYPT_KEY" not in os.environ.keys():
 log_format = '%(asctime)-22s %(levelname)-8s %(message)-90s'
 logging.basicConfig(
     format=log_format,
-    level=logging.VERBOSE if DEBUG else logging.INFO,
+    level=logging.DEBUG if DEBUG else logging.INFO,
 )
 
 logging.info("Starting custom INFN configuration of JupyterHub Spawner")
@@ -153,6 +155,28 @@ class IamAuthenticator(GenericOAuthenticator):
     """
     Custom implementation of the OAuth2 authenticator.
     """
+    async def update_auth_model(self, auth_model):
+        print ("update_auth_model", pformat(auth_model))
+        groups = auth_model["auth_state"].get("oauth_user", {}).get("groups", [])
+        auth_model["auth_state"]["oauth_user"] = auth_model["auth_state"].get("oauth_user", {})
+        auth_model["auth_state"]["oauth_user"]["scopes"] = auth_model.get("scopes", [])
+        username = auth_model['name']
+        # username = auth_model["auth_state"]["oauth_user"].get("preferred_username", "User with no name")
+
+        user_allowed = any([g in OAUTH_GROUPS.split(" ") for g in groups])
+        auth_model['admin'] = any([g in OAUTH_ADMIN_GROUPS.split(" ") for g in groups])
+        
+        if auth_model['admin']:
+            logging.info(f"{username} is authorized as ADMIN")
+        if user_allowed:
+            self.allowed_users.add(username)
+            logging.info(f"{username} is authorized")
+        else:
+            auth_model["auth_state"]["oauth_user"]["scopes"] = []
+            logging.warning(f"{username} is NOT authorized")
+
+        return auth_model
+
 
     @gen.coroutine
     def pre_spawn_start(self, user, spawner):
@@ -177,9 +201,18 @@ class IamAuthenticator(GenericOAuthenticator):
         spawner.environment['REFRESH_TOKEN'] = auth_state['refresh_token']
         spawner.environment['USERNAME'] = auth_state['oauth_user']['preferred_username']
         spawner.environment['JUPYTERHUB_ACTIVITY_INTERVAL'] = "15"
+        spawner.environment['NB_USER'] = auth_state['oauth_user']['preferred_username']
+        spawner.environment['NB_UID'] = "1234"
+        spawner.environment['NB_GID'] = "1234"
+        spawner.environment['NB_GROUP'] = auth_state['oauth_user']['preferred_username']
+        spawner.environment['JUPYTER_SERVER_ROOT'] = f"/{HOME_NAME}"
+        spawner.environment['GRANT_SUDO'] = "1"
+
+        print ("======= spawn =========")
+        pprint(auth_state)
 
         user_info = auth_state[self.user_auth_state_key]
-        groups = self.get_user_groups(user_info)
+        groups = auth_state.get("oauth_user", {}).get("groups")
         spawner.environment['GROUPS'] = ":".join(groups)
         
         allowed_groups = os.environ.get("OAUTH_GROUPS", "").split(" ")
@@ -188,7 +221,9 @@ class IamAuthenticator(GenericOAuthenticator):
         if not user_allowed:
             error_msg = f"User is not member of any of the allowed groups: {','.join(allowed_groups)}"
             self.log.error(error_msg)
-            raise Exception(error_msg)
+            exc = HTTPError(403, error_msg, headers={})
+            exc.headers = {}
+            raise exc
 
 
     # async def authenticate(self, handler, data=None):
@@ -404,9 +439,9 @@ class InfnSpawner(KubeSpawner):
               )
           ]
 
-          self.extra_pod_config.update ({
-                  "runtimeClassName": "nvidia",
-              })
+          # self.extra_pod_config.update ({
+          #         "runtimeClassName": "nvidia-cdi",
+          #     })
 
         self.tolerations += [
             {"key": "reserved", "operator": "Equal", "value": g, "effect": "NoSchedule"}
@@ -552,10 +587,11 @@ class InfnSpawner(KubeSpawner):
         for group in self.get_user_groups():
           volumes += [self.nfs_volume(f'shared-{group}')]
 
-        volumes.append(dict(
-            name='public-cvmfs',
-            persistentVolumeClaim={'claimName': 'cvmfs'}
-          ))
+        if CVMFS_CLAIM_NAME != "":
+            volumes.append(dict(
+                name='public-cvmfs',
+                persistentVolumeClaim={'claimName': CVMFS_CLAIM_NAME}
+                ))
 
       return volumes
 
@@ -570,9 +606,9 @@ class InfnSpawner(KubeSpawner):
 
       if NFS_SERVER_ADDRESS is not None:
         volumes += [
-          {"name": f"user-{username}", "mountPath": f"/{HOME_NAME}/private"},
-          {"name": "public", "mountPath": f"/{HOME_NAME}/shared/public"},
-          {"name": "envs", "mountPath": "/envs", "readOnly": not self.check_priviledge("envs")},
+          {"name": f"user-{username}", "mountPath": f"/{HOME_NAME}/{username}"},
+          # {"name": "public", "mountPath": f"/{HOME_NAME}/shared/public"},
+          # {"name": "envs", "mountPath": "/envs", "readOnly": not self.check_priviledge("envs")},
           ]
 
         if JUICEFS_ENABLED and self.check_priviledge('juicefs'):
@@ -587,11 +623,12 @@ class InfnSpawner(KubeSpawner):
           if JUICEFS_ENABLED and self.check_priviledge('juicefs'):
             volumes.append(self.jfs_mount(f"jfs-shared-{group}", f"/home/jfs/shared/{group}"))
 
-        volumes.append(dict(
-            name='public-cvmfs',
-            mountPath='/cvmfs',
-            mountPropagation='HostToContainer',
-          ))
+        if CVMFS_CLAIM_NAME != "":
+            volumes.append(dict(
+                name='public-cvmfs',
+                mountPath='/cvmfs',
+                mountPropagation='HostToContainer',
+                ))
 
       return volumes
 
@@ -599,19 +636,19 @@ class InfnSpawner(KubeSpawner):
     #### INITIALIZATION SCRIPT
     #### ---------------------
     
-    @property
-    def lifecycle_hooks(self):
-        storage = self.get_user_storage()
-        if NFS_SERVER_ADDRESS is not None:
-            return {
-                "postStart": {
-                  "exec": {
-                    "command": ["/bin/bash", str(STARTUP_SCRIPT)] + storage
-                    }
-                  }
-              }
+    # @property
+    # def lifecycle_hooks(self):
+    #     storage = self.get_user_storage()
+    #     if NFS_SERVER_ADDRESS is not None:
+    #         return {
+    #             "postStart": {
+    #               "exec": {
+    #                 "command": ["/bin/bash", str(STARTUP_SCRIPT)] + storage
+    #                 }
+    #               }
+    #           }
 
-        return dict()
+    #     return dict()
        
     #################################################################################
     #### ADDITIONAL SERVICES
@@ -768,12 +805,14 @@ c.GenericOAuthenticator.client_secret = IAM_CLIENT_SECRET
 c.GenericOAuthenticator.authorize_url = OAUTH_ENDPOINT.strip('/') + '/authorize'
 c.GenericOAuthenticator.token_url = OAUTH_ENDPOINT.strip('/') + '/token'
 c.GenericOAuthenticator.userdata_url = OAUTH_ENDPOINT.strip('/') + '/userinfo'
-c.GenericOAuthenticator.scope = ['openid', 'profile', 'email', 'address', 'offline_access', 'wlcg', 'wlcg.groups']
+c.GenericOAuthenticator.scope = ['openid', 'profile', 'email', 'address', 'offline_access', 'iam'] #'wlcg', 'wlcg.groups']
 c.GenericOAuthenticator.username_claim = lambda d: d["preferred_username"].replace("_", "")
-c.GenericOAuthenticator.allowed_groups = set(OAUTH_GROUPS.split(" "))
-c.GenericOAuthenticator.admin_groups = set(OAUTH_ADMIN_GROUPS.split(" "))
+c.GenericOAuthenticator.manage_groups = False
 
-c.GenericOAuthenticator.claim_groups_key = lambda d: [ g[1:] if g[0] in '/' else g for g in d["wlcg.groups"]]
+#c.GenericOAuthenticator.allowed_groups = set(OAUTH_GROUPS.split(" "))
+#c.GenericOAuthenticator.admin_groups = set(OAUTH_ADMIN_GROUPS.split(" "))
+
+# c.GenericOAuthenticator.claim_groups_key = lambda d: [ g[1:] if g[0] in '/' else g for g in d["groups"]]
 
 c.GenericOAuthenticator.enable_auth_state = True
 
@@ -784,40 +823,41 @@ c.GenericOAuthenticator.enable_auth_state = True
 c.JupyterHub.spawner_class = InfnSpawner
 InfnSpawner.initialize_nfs_volumes()
 
-c.KubeSpawner.cmd = ["jupyterhub-singleuser"]
-c.KubeSpawner.args = ["--allow-root"]
-c.KubeSpawner.privileged = True
-c.KubeSpawner.allow_privilege_escalation = True
+# c.KubeSpawner.cmd = ["/usr/local/bin/start.sh"]
+# c.KubeSpawner.args = ["--allow-root"]
+c.KubeSpawner.privileged = False
+c.KubeSpawner.allow_privilege_escalation = False
 
 c.KubeSpawner.extra_pod_config = {
     "automountServiceAccountToken": True,
         }
       
-c.KubeSpawner.environment = {
-  "HOME": f"/{HOME_NAME}/private",
-  "SHELL": "/bin/bash",
-  "JUPYTERHUB_SINGLEUSER_APP": "jupyter_server.serverapp.ServerApp",
-}
+# c.KubeSpawner.environment = {
+#   "HOME": f"/{HOME_NAME}/private",
+#   "SHELL": "/bin/bash",
+#   "JUPYTERHUB_SINGLEUSER_APP": "jupyter_server.serverapp.ServerApp",
+# }
 
 c.KubeSpawner.extra_container_config = {
     "securityContext": {
-            "privileged": True,
-            "capabilities": {
-                        "add": ["SYS_ADMIN"]
-                    }
+            "privileged": False,
+            # "capabilities": {
+            #             "add": ["SYS_ADMIN"]
+            #         }
         }
 }
 
-c.JupyterHub.hub_connect_ip = 'hub.default.svc.cluster.local'
-c.KubeSpawner.notebook_dir = f"/{HOME_NAME}"
-c.KubeSpawner.default_url = "/lab"
+c.JupyterHub.hub_connect_ip = 'hub.jhub.svc.cluster.local'
+# c.KubeSpawner.notebook_dir = f"/{HOME_NAME}"
+# c.KubeSpawner.default_url = "/lab"
 
 c.KubeSpawner.extra_container_config = {
+    "imagePullPolicy": "Always",
     "securityContext": {
-            "privileged": True,
-            "capabilities": {
-                        "add": ["SYS_ADMIN"]
-                    }
+            "privileged": False,
+            # "capabilities": {
+            #             "add": ["SYS_ADMIN"]
+            #         }
         }
 }
 

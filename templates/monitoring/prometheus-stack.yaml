@@ -1,3 +1,4 @@
+
 apiVersion: helm.cattle.io/v1
 kind: HelmChart
 metadata:
@@ -23,14 +24,14 @@ spec:
             scrape_interval: 5s
             static_configs:
               - targets:
-                - {{ .Values.nfsServerAddressExternal | default .Values.nfsServerAddress | required "define nfsServerAddress" }}:{{ .Values.nfsMetricsPort }}
-            metrics_path: /
+                - {{ .Values.nfsServerAddressExternal | default .Values.nfsServerAddress | required "define nfsServerAddress" }}:{{ .Values.nfsMetricsPort | required "nfsMetricsPort required" }} 
+            metrics_path: {{ .Values.nfsMetricsPath | required "nfsMetricsPath required" }}
           
           - job_name: jhub
             scrape_interval: 5s
             static_configs:
               - targets:
-                - "hub.default:8081"
+                - "hub.{{ .Values.jhubNamespace }}:8081"
 
             metrics_path: /hub/metrics
             bearer_token: {{ .Values.jhubMetricApiKey }}

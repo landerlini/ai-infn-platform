@@ -1,32 +1,29 @@
-{{- if .Values.rbac.create -}}
 ## Adds a ClusterRole and a ClusterRoleBinding to enable listing nodes
 ## to retrieve information on the available resources.
 
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: {{ include "jupyterhub.hub.fullname" . }}
-  labels:
-    {{- include "jupyterhub.labels" . | nindent 4 }}
+  name: {{ .Values.jhubServiceAccount }}
+  namespace: {{ .Values.jhubNamespace }}
 rules:
   - apiGroups: [""]       # "" indicates the core API group
-    resources: ["nodes", "pods"]
+    resources: ["nodes"]
     verbs: ["get", "watch", "list"]
+
 ---
+
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: {{ include "jupyterhub.hub.fullname" . }}
-  labels:
-    {{- include "jupyterhub.labels" . | nindent 4 }}
+  name: {{ .Values.jhubServiceAccount }}
+  namespace: {{ .Values.jhubNamespace }}
 subjects:
   - kind: ServiceAccount
-    name: {{ include "jupyterhub.hub.fullname" . }}
-    namespace: "{{ .Release.Namespace }}"
+    name: {{ .Values.jhubServiceAccount }}
+    namespace: {{ .Values.jhubNamespace }}
 roleRef:
   kind: ClusterRole
-  name: {{ include "jupyterhub.hub.fullname" . }}
+  name: {{ .Values.jhubServiceAccount }}
   apiGroup: rbac.authorization.k8s.io
-
-{{- end }}
 
