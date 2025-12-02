@@ -58,6 +58,7 @@ jhubCustomExporterImage: "harbor.cloud.infn.it/testbed-dm/python-prometheus-expo
 jhubExtResAllocExporterNamespaces:
   - default
   - vkd
+  - jhub
 
 # jhubExtResAllocExporterExtendedResources list extended resources to track
 jhubExtResAllocExporterExtendedResources:
@@ -131,7 +132,6 @@ jhubDefaultJLabImages:
 jhubSystemVolumes: 
   - "vkd"
   - "www"
-  - "envs"
 
 # vkdPrivateKey is the SSH key to GitOps landerlini/vk-dispatcher (deploy key)
 vkdPrivateKey:

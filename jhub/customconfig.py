@@ -12,6 +12,7 @@ import traceback
 import textwrap
 import sys
 import subprocess
+import traceback
 
 from oauthenticator.oauth2 import OAuthenticator
 from oauthenticator.generic import GenericOAuthenticator
@@ -19,6 +20,7 @@ from tornado import gen
 from tornado.web import HTTPError
 from kubespawner import KubeSpawner
 import requests
+from requests.auth import HTTPBasicAuth
 import yaml
 import subprocess
 import warnings
@@ -48,6 +50,11 @@ IAM_CLIENT_SECRET = os.environ["IAM_CLIENT_SECRET"]
 START_TIMEOUT = int(os.environ.get("START_TIMEOUT", 20))
 NFS_MOUNT_POINT = Path(os.environ.get("NFS_MOUNT_POINT", "/nfs-shared"))
 NFS_SERVER_ADDRESS = os.environ.get("NFS_SERVER_ADDRESS")
+NFS_SERVER_HTTP_PORT = int(os.environ.get("NFS_SERVER_HTTP_PORT", "3000"))
+NFS_SERVER_HTTP_TLS = (os.environ.get("NFS_SERVER_HTTP_TLS", "no") in ["true", "yes", "y"]) 
+NFS_SERVER_ADMIN_USER = os.environ.get("NFS_SERVER_ADMIN_USER", "filesystem-admin")
+NFS_SERVER_ADMIN_PASSWORD = os.environ.get("NFS_SERVER_ADMIN_PASSWORD", "pincopanco")
+
 JUICEFS_ENABLED = os.environ.get("JUICEFS_ENABLED") in ["true", "yes", "y"]
 JUICEFS_MOUNT_POINT = Path(os.environ.get("JUICEFS_MOUNT_POINT", "/jfs"))
 JUICEFS_PVC_NAME = os.environ.get("JUICEFS_PVC_NAME", "juicefs")
@@ -177,6 +184,14 @@ class IamAuthenticator(GenericOAuthenticator):
 
         return auth_model
 
+    def throw_http(self, status_code: int, error_msg: str):
+        self.log.error(error_msg)
+        self.log.error(traceback.print_exc())
+
+        exc = HTTPError(status_code, error_msg, headers={})
+        exc.headers = {}
+        raise exc
+
 
     @gen.coroutine
     def pre_spawn_start(self, user, spawner):
@@ -192,6 +207,24 @@ class IamAuthenticator(GenericOAuthenticator):
             warnings.warn("Could not retrieve user's auth_state at spawning")
             return
 
+        username = auth_state['oauth_user']['preferred_username']
+        project_groups = spawner.get_user_groups()
+        print (f"project groups: {project_groups}")
+
+        nfs_user_response = requests.get(
+                f"http{'s' if NFS_SERVER_HTTP_TLS else ''}://{NFS_SERVER_ADDRESS}:{NFS_SERVER_HTTP_PORT}/ensure-user",
+                params=dict(name=username, groups='+'.join(project_groups)),
+                auth=HTTPBasicAuth(NFS_SERVER_ADMIN_USER, NFS_SERVER_ADMIN_PASSWORD),
+                )
+
+        if nfs_user_response.status_code != 200:
+            self.throw_http(507, f"Failed while trying to ensure directories for user's home and groups. {nfs_user_response.text}")
+
+        try:
+            nfs_user_data = nfs_user_response.json()
+        except ValueError:
+            self.throw_http(500, "Invalid response from NFS server")
+
         # define some environment variables from auth_state
         self.log.info(auth_state)
         spawner.environment['IAM_SERVER'] = OAUTH_ENDPOINT
@@ -201,29 +234,22 @@ class IamAuthenticator(GenericOAuthenticator):
         spawner.environment['REFRESH_TOKEN'] = auth_state['refresh_token']
         spawner.environment['USERNAME'] = auth_state['oauth_user']['preferred_username']
         spawner.environment['JUPYTERHUB_ACTIVITY_INTERVAL'] = "15"
-        spawner.environment['NB_USER'] = auth_state['oauth_user']['preferred_username']
-        spawner.environment['NB_UID'] = "1234"
-        spawner.environment['NB_GID'] = "1234"
-        spawner.environment['NB_GROUP'] = auth_state['oauth_user']['preferred_username']
+        spawner.environment['NB_USER'] = nfs_user_data['username']
+        spawner.environment['NB_UID'] = nfs_user_data['uid']
+        spawner.environment['NB_GID'] = nfs_user_data['gid']
+        spawner.environment['NB_GROUP'] = nfs_user_data['groupname']
         spawner.environment['JUPYTER_SERVER_ROOT'] = f"/{HOME_NAME}"
-        spawner.environment['GRANT_SUDO'] = "1"
-
-        print ("======= spawn =========")
-        pprint(auth_state)
+        spawner.environment['GRANT_SUDO'] = "1" if spawner.check_privilege('sudoer') else "0"
+        spawner.environment['NB_GROUPS'] = ', '.join([f"{g['gid']}:{g['name']}" for g in nfs_user_data['groups']])
 
         user_info = auth_state[self.user_auth_state_key]
-        groups = auth_state.get("oauth_user", {}).get("groups")
-        spawner.environment['GROUPS'] = ":".join(groups)
+        iam_groups = auth_state.get("oauth_user", {}).get("groups")
         
         allowed_groups = os.environ.get("OAUTH_GROUPS", "").split(" ")
-        user_allowed = any([g in allowed_groups for g in groups])
+        user_allowed = any([g in allowed_groups for g in iam_groups])
 
         if not user_allowed:
-            error_msg = f"User is not member of any of the allowed groups: {','.join(allowed_groups)}"
-            self.log.error(error_msg)
-            exc = HTTPError(403, error_msg, headers={})
-            exc.headers = {}
-            raise exc
+            self.throw_http(403, f"User is not member of any of the allowed groups: {','.join(allowed_groups)}")
 
 
     # async def authenticate(self, handler, data=None):
@@ -392,70 +418,94 @@ class InfnSpawner(KubeSpawner):
 
     async def options_from_form(self, formdata):
         options = {}
-        options['img'] = formdata['img']
-        container_image = ''.join(formdata['img'])
-        self.image = container_image
+        options['img'] = list(DEFAULT_JLAB_IMAGES.values())[0]
+        self.image = options['img']
 
-        options['cpu'] = formdata['cpu']
-        cpu = ''.join(formdata['cpu'])
+        options['cpu'] = 4
         self.cpu_guarantee = 1.
-        self.cpu_limit = float(cpu)
+        self.cpu_limit = 4.
 
-        options['mem'] = formdata['mem']
-        memory = ''.join(formdata['mem'])
-        self.mem_guarantee = "2G"
-        self.mem_limit = memory
+        options['mem'] = '16G'
+        self.mem_guarantee = '16G'
+        self.mem_limit = '16G'
 
-        accelerator = "".join(formdata['gpu'])
-        if accelerator in ["none"]:
-          self.node_affinity_preferred = [
-            _prefer_accelerator(
-              acc.get('node_selector', {'nvidia.com/gpu.product': acc.get('name')}), 
-              weight=acc.get('preference_weight', 50)
-              )
-            for acc in GPU_MODEL_DESCRIPTION
-            ]
+        self.extra_resource_limits = {'ai.infn.it/fuse': 1}
 
-        elif accelerator.startswith('gpu:'):
+        if 'gpu' in formdata['instance']:
           options['gpu'] = True
+          self.extra_resource_guarantees = {'nvidia.com/gpu': 1}
+          self.extra_resource_limits.update({'nvidia.com/gpu': 1})
+        else:
+          options['gpu'] = False
 
-          _, model_gpu, n_gpus = accelerator.split(":")
-          gpu_data = {g['name']: g for g in GPU_MODEL_DESCRIPTION}.get(model_gpu)
-          if gpu_data is None:
-            raise Exception(f"Failed retrieving data for GPU model {model_gpu}")
-
-          ext_res = gpu_data.get('extended_resource', 'nvidia.com/gpu')
-          self.extra_resource_guarantees = {ext_res: n_gpus}
-          self.extra_resource_limits = {ext_res: n_gpus}
-
-          self.tolerations.append(
-            {"key": f"nvidia.com/gpu", "operator": "Exists", "effect": "PreferNoSchedule"}
-          )
-
-          self.node_affinity_preferred = [
-            _prefer_accelerator(
-              gpu_data.get('node_selector', {'nvidia.com/gpu.operator': gpu_data.get('name')}), 
-              weight=100
-              )
-          ]
-
-          # self.extra_pod_config.update ({
-          #         "runtimeClassName": "nvidia-cdi",
-          #     })
-
-        self.tolerations += [
-            {"key": "reserved", "operator": "Equal", "value": g, "effect": "NoSchedule"}
-            for g in self.get_user_groups()
-        ]
-
-        self.tolerations += [
-            {"key": "reserved", "operator": "Equal", "value": g, "effect": "PreferNoSchedule"}
-            for g in self.get_user_groups()
-        ]
-
-        logging.info("Affinity - preferred")
-        logging.info(self.node_affinity_preferred)
         return options
+
+    # async def options_from_form(self, formdata):
+    #     options = {}
+    #     options['img'] = formdata['img']
+    #     container_image = ''.join(formdata['img'])
+    #     self.image = container_image
+
+    #     options['cpu'] = formdata['cpu']
+    #     cpu = ''.join(formdata['cpu'])
+    #     self.cpu_guarantee = 1.
+    #     self.cpu_limit = float(cpu)
+
+    #     options['mem'] = formdata['mem']
+    #     memory = ''.join(formdata['mem'])
+    #     self.mem_guarantee = "2G"
+    #     self.mem_limit = memory
+
+    #     accelerator = "".join(formdata['gpu'])
+    #     if accelerator in ["none"]:
+    #       self.node_affinity_preferred = [
+    #         _prefer_accelerator(
+    #           acc.get('node_selector', {'nvidia.com/gpu.product': acc.get('name')}), 
+    #           weight=acc.get('preference_weight', 50)
+    #           )
+    #         for acc in GPU_MODEL_DESCRIPTION
+    #         ]
+
+    #     elif accelerator.startswith('gpu:'):
+    #       options['gpu'] = True
+
+    #       _, model_gpu, n_gpus = accelerator.split(":")
+    #       gpu_data = {g['name']: g for g in GPU_MODEL_DESCRIPTION}.get(model_gpu)
+    #       if gpu_data is None:
+    #         raise Exception(f"Failed retrieving data for GPU model {model_gpu}")
+
+    #       ext_res = gpu_data.get('extended_resource', 'nvidia.com/gpu')
+    #       self.extra_resource_guarantees = {ext_res: n_gpus}
+    #       self.extra_resource_limits = {ext_res: n_gpus}
+
+    #       self.tolerations.append(
+    #         {"key": f"nvidia.com/gpu", "operator": "Exists", "effect": "PreferNoSchedule"}
+    #       )
+
+    #       self.node_affinity_preferred = [
+    #         _prefer_accelerator(
+    #           gpu_data.get('node_selector', {'nvidia.com/gpu.operator': gpu_data.get('name')}), 
+    #           weight=100
+    #           )
+    #       ]
+
+    #       # self.extra_pod_config.update ({
+    #       #         "runtimeClassName": "nvidia-cdi",
+    #       #     })
+
+    #     self.tolerations += [
+    #         {"key": "reserved", "operator": "Equal", "value": g, "effect": "NoSchedule"}
+    #         for g in self.get_user_groups()
+    #     ]
+
+    #     self.tolerations += [
+    #         {"key": "reserved", "operator": "Equal", "value": g, "effect": "PreferNoSchedule"}
+    #         for g in self.get_user_groups()
+    #     ]
+
+    #     logging.info("Affinity - preferred")
+    #     logging.info(self.node_affinity_preferred)
+    #     return options
 
     #################################################################################
     #### SPLASH AND AUTHORIZATION
@@ -478,7 +528,7 @@ class InfnSpawner(KubeSpawner):
     def get_user_storage(self):
       return [group.properties.get("storage") for group in self.user.groups if "storage" in group.properties] 
 
-    def check_priviledge(self, op):
+    def check_privilege(self, op):
       system_groups = [g.name for g in self.user.groups if g.properties.get("system", False)] 
       result = op in system_groups
       logging.info(f"{self.get_user_name()} { 'has' if result else 'has not' } permission '{op}'")
@@ -509,9 +559,13 @@ class InfnSpawner(KubeSpawner):
           setup_filepath = Path(
             f"{NFS_MOUNT_POINT}/{STARTUP_SCRIPT}".replace("//", "/").replace("//", "/")
           )
-          logging.info(f"Initializing setup script, {setup_filepath}")
+          setup_filepath_src = CONFIGMAP_MOUNT_PATH/"envs-setup.sh"
+
           if not os.path.exists(setup_filepath):
+              logging.info(f"Initializing setup script, {setup_filepath_src} -> {setup_filepath}")
               shutil.copy2(CONFIGMAP_MOUNT_PATH/"envs-setup.sh", setup_filepath)
+          else:
+              logging.info(f"Refuse to overwrite {setup_filepath} with {setup_filepath_src}")
 
         else:
           logging.warning("NFS_SERVER_ADDRESS not set. Will not mount network drivers.")
@@ -526,8 +580,8 @@ class InfnSpawner(KubeSpawner):
       )  
 
     def nfs_volume(self, name):
-      if not os.path.exists(NFS_MOUNT_POINT/name):
-        os.mkdir(NFS_MOUNT_POINT/name)
+      # if not os.path.exists(NFS_MOUNT_POINT/name):
+      #   os.mkdir(NFS_MOUNT_POINT/name)
       return dict(
         name=name, 
         nfs=dict(
@@ -577,11 +631,11 @@ class InfnSpawner(KubeSpawner):
           self.nfs_volume(f'envs'),
           ]
 
-        if self.check_priviledge('juicefs'):
+        if self.check_privilege('juicefs'):
           volumes.append (self.jfs_volume())
 
         for volume in SYSTEM_VOLUMES:
-          if self.check_priviledge(volume):
+          if self.check_privilege(volume):
             volumes.append(self.nfs_volume(volume))
 
         for group in self.get_user_groups():
@@ -607,20 +661,20 @@ class InfnSpawner(KubeSpawner):
       if NFS_SERVER_ADDRESS is not None:
         volumes += [
           {"name": f"user-{username}", "mountPath": f"/{HOME_NAME}/{username}"},
-          # {"name": "public", "mountPath": f"/{HOME_NAME}/shared/public"},
-          # {"name": "envs", "mountPath": "/envs", "readOnly": not self.check_priviledge("envs")},
+          {"name": "public", "mountPath": f"/{HOME_NAME}/shared/public"},
+          {"name": "envs", "mountPath": "/envs", "readOnly": not self.check_privilege("envs")},
           ]
 
-        if JUICEFS_ENABLED and self.check_priviledge('juicefs'):
+        if JUICEFS_ENABLED and self.check_privilege('juicefs'):
           volumes.append(self.jfs_mount(f"jfs-user-{username}", "/home/jfs/private"))
 
         for volume in SYSTEM_VOLUMES:
-          if self.check_priviledge(volume):
+          if self.check_privilege(volume):
             volumes += [{"name": volume, "mountPath": f"/{HOME_NAME}/system/{volume}"}]
 
         for group in self.get_user_groups():
           volumes += [{"name": f"shared-{group}", "mountPath": f"/{HOME_NAME}/shared/{group}", "readOnly": False}]
-          if JUICEFS_ENABLED and self.check_priviledge('juicefs'):
+          if JUICEFS_ENABLED and self.check_privilege('juicefs'):
             volumes.append(self.jfs_mount(f"jfs-shared-{group}", f"/home/jfs/shared/{group}"))
 
         if CVMFS_CLAIM_NAME != "":
@@ -636,19 +690,28 @@ class InfnSpawner(KubeSpawner):
     #### INITIALIZATION SCRIPT
     #### ---------------------
     
-    # @property
-    # def lifecycle_hooks(self):
-    #     storage = self.get_user_storage()
-    #     if NFS_SERVER_ADDRESS is not None:
-    #         return {
-    #             "postStart": {
-    #               "exec": {
-    #                 "command": ["/bin/bash", str(STARTUP_SCRIPT)] + storage
-    #                 }
-    #               }
-    #           }
+    @property
+    def lifecycle_hooks(self):
+        storage = self.get_user_storage()
+        if NFS_SERVER_ADDRESS is not None:
+            return {
+                "postStart": {
+                  "exec": {
+                    # "command": ["sudo", "-u", self.get_user_name(), "/bin/bash", str(STARTUP_SCRIPT)] + storage
+                    "command": [
+                        "/bin/bash", 
+                        "-c", 
+                        f"""
+                        if [ -r /envs/root_setup.sh ]; then
+                            source /envs/root_setup.sh &> /tmp/setup.log
+                        fi
+                        """
+                      ]
+                    }
+                  }
+              }
 
-    #     return dict()
+        return dict()
        
     #################################################################################
     #### ADDITIONAL SERVICES
@@ -683,7 +746,7 @@ class InfnSpawner(KubeSpawner):
         INTERVAL="60",
         JUPYTERHUB_USERNAME=str(self.get_user_name()),
         JUPYTERHUB_GROUPS=":".join(self.get_user_groups()),
-        ADMIN="true" if self.check_priviledge(VKD_ADMIN_USER_GROUP) else "",
+        ADMIN="true" if self.check_privilege(VKD_ADMIN_USER_GROUP) else "",
         PORT=str(VKD_PORT),
         HTTP_PREFIX=f"/user/{self.get_user_name()}/proxy/{VKD_PORT}",
         MINIO_SERVER=VKD_MINIO_URL, 
@@ -692,7 +755,7 @@ class InfnSpawner(KubeSpawner):
         MAXIMUM_FOLDER_SIZE_GB=VKD_MINIO_MAXIMUM_FOLDER_SIZE_GB,
         )
 
-      if JUICEFS_ENABLED and self.check_priviledge('juicefs'):
+      if JUICEFS_ENABLED and self.check_privilege('juicefs'):
         environment.update(
             dict(
               JUICEFS_S3_BUCKET=JUICEFS_S3_BUCKET,
