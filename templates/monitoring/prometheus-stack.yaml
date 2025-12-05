@@ -15,10 +15,21 @@ spec:
     prometheus:
       service:
         type: ClusterIP 
+      serviceMonitorNamespaceSelector: {}
+
       prometheusSpec:
         externalUrl: "https://hub.ai.cloud.infn.it/prometheus"
         serviceMonitorSelectorNilUsesHelmValues: false
         additionalScrapeConfigs:
+              # - job_name: jhub
+              #   scrape_interval: 5s
+              #   static_configs:
+              #     - targets:
+              #       - "hub.{{ .Values.jhubNamespace }}:8081"
+
+              #   metrics_path: /hub/metrics
+              #   bearer_token: {{ .Values.jhubMetricApiKey }}
+
 
           - job_name: nfs
             scrape_interval: 5s
@@ -27,15 +38,6 @@ spec:
                 - {{ .Values.nfsServerAddressExternal | default .Values.nfsServerAddress | required "define nfsServerAddress" }}:{{ .Values.nfsMetricsPort | required "nfsMetricsPort required" }} 
             metrics_path: {{ .Values.nfsMetricsPath | required "nfsMetricsPath required" }}
           
-          - job_name: jhub
-            scrape_interval: 5s
-            static_configs:
-              - targets:
-                - "hub.{{ .Values.jhubNamespace }}:8081"
-
-            metrics_path: /hub/metrics
-            bearer_token: {{ .Values.jhubMetricApiKey }}
-
           - job_name: gpu-metrics
             scrape_interval: 5s
             metrics_path: /metrics

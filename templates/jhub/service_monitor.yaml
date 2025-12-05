@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: jhub-metrics-secret
+  namespace: {{ .Values.jhubNamespace }}
+type: Opaque
+stringData:
+  token: {{ .Values.jhubMetricApiKey }}
+
+--- 
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: jhub-service-monitor
+  namespace: {{ .Values.jhubNamespace }}
+  labels:
+    release: prometheus-stack 
+spec:
+  jobLabel: jhub 
+
+  # Seleziona il Service Kubernetes creato/etichettato nel punto 2
+  selector:
+    matchLabels:
+      component: hub
+      app.kubernetes.io/name: jupyterhub
+
+  namespaceSelector:
+    matchNames:
+      - {{ .Values.jhubNamespace }}
+
+  endpoints:
+  - port: hub
+    interval: 10s     
+    path: /hub/metrics 
+    
+    # Configura l'autenticazione Bearer Token usando il Secret del punto 1
+    bearerTokenSecret:
+      name: jhub-metrics-secret 
+      key: token                
+
